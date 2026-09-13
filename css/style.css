@@ -300,23 +300,43 @@ body.alarm .security-panel{border-color:var(--red);box-shadow:0 0 30px rgba(255,
 .pager a{flex:1;text-align:center;border:1px solid var(--line);border-radius:12px;padding:13px;color:var(--cyan);text-decoration:none;font-weight:700;font-size:.82rem;letter-spacing:1px;background:#0d1830}
 .pager a:active{transform:scale(.98)}
 
-/* responsive */
+/* ---------- responsive tiers: desktop / tablet / phone ---------- */
+/* TABLET (portrait tablets, small laptops): 2-col grids, thumb-friendly bottom nav */
 @media(max-width:1020px){
   .grid-3{grid-template-columns:1fr 1fr}
   .grid-gps{grid-template-columns:1fr}
   .topnav{display:none}
+  .bottom-nav{display:block}
+  main{padding:16px;padding-bottom:96px}
+  .footer{padding-bottom:96px}
+  #gps-map{height:340px}
+  .topbar-inner{row-gap:8px}
 }
+/* PHONE: single column, compact header, fluid touch controls */
 @media(max-width:680px){
   .grid-3,.grid-2{grid-template-columns:1fr}
   .dpad-wrap{grid-template-columns:1fr}
+  .dpad{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,68px);width:100%;max-width:330px}
   .env-grid{grid-template-columns:1fr 1fr}
   .hw-grid{grid-template-columns:1fr}
+  .gps-mini{grid-template-columns:1fr 1fr}
   #gps-map{height:300px}
-  main{padding:12px;padding-bottom:86px}
-  .footer{padding-bottom:86px}
-  .bottom-nav{display:block}
+  main{padding:12px;padding-bottom:90px}
+  .footer{padding-bottom:90px}
   .brand-sub{display:none}
   .brand-name{font-size:1.15rem}
   .topbar-inner{gap:10px}
   .demo-label{display:none}
+  .section-head h2{font-size:1rem}
+  .topbar-sub{font-size:.7rem;gap:10px}
+  .emergency{padding:18px;font-size:1.05rem}
+  .api-actions{flex-direction:column}
+}
+/* SMALL PHONES: keep sensor cards readable */
+@media(max-width:400px){
+  .dist-val{font-size:1.25rem}
+  .env strong{font-size:.78rem}
+  .gps-btns .btn{flex:1 1 100%}
+  .auto-btns{flex-direction:column}
+  .auto-btns .btn{width:100%}
 }
