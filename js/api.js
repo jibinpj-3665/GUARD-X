@@ -39,8 +39,9 @@ const GUARDX_CONFIG = {
   MAP_MAX_ZOOM: 19,
 
   // ---- 2b. OPTIONAL BRING-YOUR-OWN KEYS (also editable in UI, stored in localStorage) ----
-  ORS_KEY: "",                      // OpenRouteService — real road geometry
-  GEMINI_KEY: "",                    // Google Gemini — live AI analysis
+  // Baked-in ORS default so road routing works out of the box (Gemini stays bring-your-own).
+  ORS_KEY: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjAzODJmODZkMjU0YzQxYTNhOGViOTBlOGRkYjRmZTlmIiwiaCI6Im11cm11cjY0In0=",
+  GEMINI_KEY: "",                    // paste in KEYS page → localStorage only
   GEMINI_MODEL: "gemini-3.6-flash"   // primary model (verified live); fallbacks below
 };
 const GEMINI_MODEL_FALLBACKS = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
@@ -325,8 +326,8 @@ function loadApiKeys() {
     if (gem) GUARDX_CONFIG.GEMINI_KEY = gem;
     const oEl = document.getElementById("ors-key");
     const gEl = document.getElementById("gemini-key");
-    if (oEl && ors) oEl.value = ors;
-    if (gEl && gem) gEl.value = gem;
+    if (oEl && !oEl.value) oEl.value = GUARDX_CONFIG.ORS_KEY || "";
+    if (gEl && !gEl.value) gEl.value = GUARDX_CONFIG.GEMINI_KEY || "";
   } catch (e) { /* private mode */ }
   if (typeof renderApiKeyStatus === "function") renderApiKeyStatus();
 }
