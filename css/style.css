@@ -295,18 +295,42 @@ body.alarm .security-panel{border-color:var(--red);box-shadow:0 0 30px rgba(255,
 .ai-output{background:#0a1322;border:1px solid var(--line2);border-radius:12px;padding:12px;font-family:var(--mono);font-size:.78rem;line-height:1.65;white-space:pre-wrap;min-height:130px;max-height:300px;overflow-y:auto;color:var(--txt)}
 .ai-output.loading{border-color:var(--cyan);color:var(--cyan)}
 
-/* ---------- IMU: CSS-3D orientation cube + graphs ---------- */
-.cube-stage{perspective:750px;display:flex;justify-content:center;padding:28px 0;min-height:230px;overflow:hidden}
-.cube{width:150px;height:150px;position:relative;transform-style:preserve-3d;transition:transform .12s linear}
-.face{position:absolute;width:150px;height:150px;border:1px solid var(--cyan);background:rgba(0,229,255,.07);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.7rem;color:var(--txt);font-family:var(--mono);border-radius:10px}
-.face span{font-size:.58rem;letter-spacing:2px;color:var(--cyan);margin-top:6px}
-.f-top{transform:rotateX(90deg) translateZ(75px);background:rgba(0,255,136,.1);border-color:var(--green)}
-.f-top span{color:var(--green)}
-.f-bottom{transform:rotateX(-90deg) translateZ(75px)}
-.f-front{transform:translateZ(75px)}
-.f-back{transform:rotateY(180deg) translateZ(75px)}
-.f-left{transform:rotateY(-90deg) translateZ(75px)}
-.f-right{transform:rotateY(90deg) translateZ(75px)}
+/* ---------- IMU: cinematic CSS-3D rover showroom ---------- */
+.showroom{position:relative;perspective:1000px;min-height:350px;overflow:hidden;border:1px solid var(--line2);border-radius:12px;background:radial-gradient(ellipse at 50% 120%,rgba(0,229,255,.12),transparent 60%),radial-gradient(circle at 50% 20%,#0d1a30,#070c16);}
+/* showroom floor grid */
+.floor{position:absolute;left:50%;top:64%;width:640px;height:640px;transform:translate(-50%,-50%) rotateX(72deg);background-image:linear-gradient(rgba(0,229,255,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.14) 1px,transparent 1px);background-size:32px 32px;mask-image:radial-gradient(circle,#000 30%,transparent 68%);-webkit-mask-image:radial-gradient(circle,#000 30%,transparent 68%);animation:floorDrift 14s linear infinite}
+@keyframes floorDrift{to{background-position:0 64px,0 64px}}
+/* sweeping light band */
+.scan{position:absolute;left:-20%;right:-20%;top:0;height:90px;background:linear-gradient(180deg,transparent,rgba(0,229,255,.07),transparent);animation:scanSweep 5s ease-in-out infinite}
+@keyframes scanSweep{0%,100%{transform:translateY(0)}50%{transform:translateY(260px)}}
+/* parallax wrapper (mouse) + orientation model (MPU) */
+.car-tilt{position:absolute;left:50%;top:44%;width:0;height:0;transform-style:preserve-3d;transition:transform .35s ease-out}
+.car3d{position:absolute;left:0;top:0;transform-style:preserve-3d;transition:transform .12s linear}
+/* generic cuboid: --w/--h/--d size, --place positions it inside the car */
+.cub{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d;transform:var(--place,none)}
+.cub .f{position:absolute;left:0;top:0;border:1px solid rgba(0,229,255,.55);background:rgba(13,24,48,.94);color:var(--cyan);font-family:var(--mono);font-size:11px;display:flex;align-items:center;justify-content:center;letter-spacing:2px}
+.cub .f-top{width:var(--w);height:var(--d);transform:translate(-50%,-50%) rotateX(90deg) translateZ(calc(var(--h)/2))}
+.cub .f-bottom{width:var(--w);height:var(--d);transform:translate(-50%,-50%) rotateX(-90deg) translateZ(calc(var(--h)/2))}
+.cub .f-front{width:var(--w);height:var(--h);transform:translate(-50%,-50%) translateZ(calc(var(--d)/2))}
+.cub .f-back{width:var(--w);height:var(--h);transform:translate(-50%,-50%) rotateY(180deg) translateZ(calc(var(--d)/2))}
+.cub .f-right{width:var(--d);height:var(--h);transform:translate(-50%,-50%) rotateY(90deg) translateZ(calc(var(--w)/2))}
+.cub .f-left{width:var(--d);height:var(--h);transform:translate(-50%,-50%) rotateY(-90deg) translateZ(calc(var(--w)/2))}
+.chassis .f-top{background:rgba(16,29,51,.96);font-size:12px}
+.glass .f{background:rgba(0,229,255,.16);border-color:rgba(0,229,255,.85)}
+.wheel .f{background:#05080f;border-color:#5b6b85}
+.wheel .f-left::after,.wheel .f-right::after{content:'';position:absolute;inset:24%;border-radius:50%;background:radial-gradient(circle,#00e5ff 0 22%,#0a1426 26%);box-shadow:0 0 10px rgba(0,229,255,.8)}
+.mast .f{background:#0a1426;border-color:rgba(0,255,136,.6)}
+.dish .f{background:#101d33;border-color:var(--green)}
+.dish .f-top::after{content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);animation:blink 1s infinite}
+.glowbar .f{background:var(--cyan);border-color:#e8ffff;box-shadow:0 0 18px rgba(0,229,255,.9)}
+/* headlight beams + underglow ride with the car */
+.beam{position:absolute;left:var(--bx);top:44px;width:46px;height:150px;transform-origin:top center;transform:translateX(-50%) rotateX(84deg);background:linear-gradient(to bottom,rgba(0,229,255,.4),transparent 85%);filter:blur(7px);mix-blend-mode:screen;pointer-events:none}
+.underglow{position:absolute;left:0;top:46px;width:230px;height:150px;transform:translate(-50%,-50%) rotateX(90deg);background:radial-gradient(ellipse,rgba(0,229,255,.35),transparent 65%);filter:blur(4px);mix-blend-mode:screen;pointer-events:none}
+/* dynamic ground shadow */
+.car-shadow{position:absolute;left:50%;bottom:44px;width:250px;height:56px;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(0,0,0,.75),transparent 65%);filter:blur(6px);transition:transform .15s,opacity .15s}
+/* tilt-reactive rim lighting */
+.car3d.tilt-warn .cub:not(.glowbar) .f{border-color:var(--orange)}
+.car3d.tilt-crit .cub:not(.glowbar) .f{border-color:var(--red);box-shadow:0 0 14px rgba(255,45,85,.5)}
 .rpy{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
 .rpy div{background:#0a1322;border:1px solid var(--line2);border-radius:10px;padding:10px;text-align:center}
 .rpy span{font-size:.62rem;letter-spacing:1px;color:var(--muted);display:block}

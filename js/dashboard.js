@@ -303,12 +303,22 @@ function renderIMU(d) {
   setT("igz", d.gyroZ.toFixed(1) + " °/s");
   setT("mpu-temp-val", isFinite(d.mpuTemp) ? d.mpuTemp.toFixed(1) + " °C" : "--");
   // CSS-3D rover: no libraries, works offline from the ESP32 AP too
+  const tiltDeg = Math.hypot(isFinite(d.roll) ? d.roll : 0, isFinite(d.pitch) ? d.pitch : 0);
   const cube = $("cube3d");
   if (cube) {
     const r = isFinite(d.roll) ? d.roll : 0;
     const p = isFinite(d.pitch) ? d.pitch : 0;
     const y = isFinite(d.yaw) ? d.yaw : 0;
     cube.style.transform = "rotateX(" + (-p).toFixed(1) + "deg) rotateY(" + y.toFixed(1) + "deg) rotateZ(" + r.toFixed(1) + "deg)";
+    cube.classList.toggle("tilt-warn", tiltDeg >= 25 && tiltDeg < 45);
+    cube.classList.toggle("tilt-crit", tiltDeg >= 45);
+  }
+  // cinematic ground shadow reacts to tilt
+  const sh = $("carShadow");
+  if (sh) {
+    const t = Math.min(1, tiltDeg / 45);
+    sh.style.transform = "translateX(-50%) scale(" + (1 + t * 0.45).toFixed(2) + "," + (1 + t * 0.2).toFixed(2) + ")";
+    sh.style.opacity = (0.9 - t * 0.35).toFixed(2);
   }
   renderSensorStatus(d);
   checkImuSafety(d);

@@ -87,16 +87,68 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title">🧊 3D ORIENTATION <span class="tag">LIVE</span></div>
-      <div class="cube-stage">
-        <div class="cube" id="cube3d">
-          <div class="face f-top">🤖<span>GUARD-X TOP</span></div>
-          <div class="face f-bottom"><span>L298N</span></div>
-          <div class="face f-front"><span>▲ FRONT</span></div>
-          <div class="face f-back"><span>BACK</span></div>
-          <div class="face f-left"><span>◀ LEFT</span></div>
-          <div class="face f-right"><span>RIGHT ▶</span></div>
+      <div class="panel-title">🚗 3D ROVER — LIVE TILT <span class="tag">MPU6050</span></div>
+      <div class="showroom" id="showroom">
+        <div class="floor" aria-hidden="true"></div>
+        <div class="scan" aria-hidden="true"></div>
+        <div class="car-tilt" id="carTilt">
+          <div class="car3d" id="cube3d">
+            <!-- chassis -->
+            <div class="cub chassis" style="--w:170px;--h:30px;--d:86px;--place:translateY(12px)">
+              <div class="f f-top">GUARD-X</div><div class="f f-bottom"></div>
+              <div class="f f-front">▲</div><div class="f f-back"></div>
+              <div class="f f-left"></div><div class="f f-right"></div>
+            </div>
+            <!-- glass cabin -->
+            <div class="cub glass" style="--w:92px;--h:26px;--d:62px;--place:translate(-6px,-16px,0)">
+              <div class="f f-top"></div><div class="f f-bottom"></div>
+              <div class="f f-front"></div><div class="f f-back"></div>
+              <div class="f f-left"></div><div class="f f-right"></div>
+            </div>
+            <!-- wheels -->
+            <div class="cub wheel" style="--w:30px;--h:34px;--d:16px;--place:translate(-58px,30px,35px)">
+              <div class="f f-top"></div><div class="f f-bottom"></div>
+              <div class="f f-front"></div><div class="f f-back"></div>
+              <div class="f f-left"></div><div class="f f-right"></div>
+            </div>
+            <div class="cub wheel" style="--w:30px;--h:34px;--d:16px;--place:translate(58px,30px,35px)">
+              <div class="f f-top"></div><div class="f f-bottom"></div>
+              <div class="f f-front"></div><div class="f f-back"></div>
+              <div class="f f-left"></div><div class="f f-right"></div>
+            </div>
+            <div class="cub wheel" style="--w:30px;--h:34px;--d:16px;--place:translate(-58px,30px,-35px)">
+              <div class="f f-top"></div><div class="f f-bottom"></div>
+              <div class="f f-front"></div><div class="f f-back"></div>
+              <div class="f f-left"></div><div class="f f-right"></div>
+            </div>
+            <div class="cub wheel" style="--w:30px;--h:34px;--d:16px;--place:translate(58px,30px,-35px)">
+              <div class="f f-top"></div><div class="f f-bottom"></div>
+              <div class="f f-front"></div><div class="f f-back"></div>
+              <div class="f f-left"></div><div class="f f-right"></div>
+            </div>
+            <!-- sensor mast + dish -->
+            <div class="cub mast" style="--w:8px;--h:44px;--d:8px;--place:translate(58px,-40px,-18px)">
+              <div class="f f-top"></div><div class="f f-bottom"></div>
+              <div class="f f-front"></div><div class="f f-back"></div>
+              <div class="f f-left"></div><div class="f f-right"></div>
+            </div>
+            <div class="cub dish" style="--w:30px;--h:6px;--d:30px;--place:translate(58px,-65px,-18px)">
+              <div class="f f-top"></div><div class="f f-bottom"></div>
+              <div class="f f-front"></div><div class="f f-back"></div>
+              <div class="f f-left"></div><div class="f f-right"></div>
+            </div>
+            <!-- LED light bar + headlight beams -->
+            <div class="cub glowbar" style="--w:120px;--h:8px;--d:6px;--place:translate(0,16px,44px)">
+              <div class="f f-top"></div><div class="f f-bottom"></div>
+              <div class="f f-front"></div><div class="f f-back"></div>
+              <div class="f f-left"></div><div class="f f-right"></div>
+            </div>
+            <div class="beam" style="--bx:-38px"></div>
+            <div class="beam" style="--bx:38px"></div>
+            <div class="underglow"></div>
+          </div>
         </div>
+        <div class="car-shadow" id="carShadow" aria-hidden="true"></div>
       </div>
       <div class="rpy">
         <div><span>↻ ROLL</span><strong id="roll-val">—</strong></div>

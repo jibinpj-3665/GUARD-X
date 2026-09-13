@@ -64,6 +64,20 @@
     }
   }
 
+  /* ---------- showroom camera parallax (fine pointers only) ---------- */
+  function bindShowroom() {
+    const room = get("showroom"), tilt = get("carTilt");
+    if (!room || !tilt) return;
+    if (window.matchMedia && !window.matchMedia("(pointer:fine)").matches) return;
+    room.addEventListener("mousemove", (e) => {
+      const r = room.getBoundingClientRect();
+      const dx = (e.clientX - r.left) / r.width - 0.5;
+      const dy = (e.clientY - r.top) / r.height - 0.5;
+      tilt.style.transform = "rotateY(" + (dx * 16).toFixed(1) + "deg) rotateX(" + (-dy * 12).toFixed(1) + "deg)";
+    });
+    room.addEventListener("mouseleave", () => { tilt.style.transform = ""; });
+  }
+
   /* ---------- drive buttons (click + hold-to-drive) ---------- */
   function bindDrive() {
     document.querySelectorAll(".dbtn").forEach((btn) => {
@@ -331,6 +345,7 @@
     resetDemo();
     bindUI();
     bindDrive();
+    bindShowroom();
     bindKeyboard();
     if (get("gps-map")) initMap();
     loadApiKeys();

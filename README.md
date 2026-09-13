@@ -10,7 +10,7 @@ Demo mode is ON by default, so the full UI animates with simulated data when no 
 
 - **Robot control dashboard** — connection state, mode, battery, speed, direction, system status
 - **IMU & telemetry lab** — Roll/Pitch/Yaw, accel/gyro XYZ, MPU temperature, per-sensor link status
-- **Live 3D orientation** — dependency-free CSS-3D rover that tilts/rotates with the MPU6050 (works offline from the ESP32 AP)
+- **Live 3D orientation** — cinematic dependency-free CSS-3D rover (chassis, glass cabin, wheels, sensor mast, headlights) that tilts/rotates with the MPU6050, with showroom floor, dynamic shadow and tilt-reactive lighting; works offline from the ESP32 AP
 - **Live graphs** — accel / gyro / tilt ring-buffer charts (~20–50 Hz over WebSocket, per-poll over HTTP)
 - **Tilt & crash safety** — HIGH TILT motor limiting, automatic e-stop on rollover risk, impact detection
 - **WebSocket stream** — ESP32 pushes to `ws://<ip>:81/` when available, HTTP poll is the automatic fallback
