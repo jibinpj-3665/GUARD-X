@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GUARD-X | Autonomous Multi-Sensor Security Rover</title>
+<meta name="description" content="GUARD-X is an ESP32-based autonomous multi-sensor security rover. Live control dashboard." />
+<link rel="stylesheet" href="css/style.css" />
+<!-- Leaflet.js for GPS map (OpenStreetMap, no key required) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
+</head>
+<body>
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<!-- ================= HEADER ================= -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="40" height="40">
+          <rect x="6" y="14" width="36" height="20" rx="5" fill="none" stroke="#00e5ff" stroke-width="2.5"/>
+          <circle cx="14" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="34" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="24" cy="24" r="5" fill="none" stroke="#00ff88" stroke-width="2"/>
+          <circle cx="24" cy="24" r="1.8" fill="#00ff88"/>
+          <path d="M24 6v8M14 10l4 5M34 10l-4 5" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">GUARD<span>-X</span></div>
+        <div class="brand-sub">AUTONOMOUS SECURITY ROVER</div>
+      </div>
+    </div>
+
+    <nav class="topnav" aria-label="Sections">
+      <a href="#dashboard">Status</a>
+      <a href="#control">Control</a>
+      <a href="#autonomous">Auto</a>
+      <a href="#visualization">Rover</a>
+      <a href="#gps">GPS</a>
+      <a href="#integrations">Keys/AI</a>
+      <a href="#security">Security</a>
+      <a href="#architecture">System</a>
+      <a href="#hardware">Hardware</a>
+    </nav>
+
+    <div class="topbar-status">
+      <div class="conn-pill offline" id="conn-pill" title="ESP32 connection state">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">🔴 OFFLINE</span>
+      </div>
+      <div class="mode-badge" id="mode-badge">MANUAL</div>
+      <label class="demo-switch" title="Simulate sensors when ESP32 is not reachable">
+        <input type="checkbox" id="demo-toggle" checked />
+        <span class="switch"></span>
+        <span class="demo-label">DEMO</span>
+      </label>
+    </div>
+  </div>
+  <div class="topbar-sub">
+    <div class="sub-item">ESP32 IP: <code id="header-ip">192.168.4.1</code></div>
+    <div class="sub-item">Wi-Fi: <span id="wifi-bars" class="wifi" aria-label="Wi-Fi signal">▂▄▆</span> <span id="wifi-text">--</span></div>
+    <div class="sub-item">MODE: <span id="header-mode">MANUAL</span></div>
+    <div class="sub-item demo-note hidden" id="demo-banner-top">DEMO MODE — SIMULATED DATA</div>
+  </div>
+</header>
+
+<!-- Connection / config strip -->
+<section class="conn-strip panel">
+  <div class="conn-field">
+    <label for="esp-ip">ESP32 IP ADDRESS</label>
+    <div class="ip-row">
+      <input id="esp-ip" type="text" value="192.168.4.1" spellcheck="false" placeholder="192.168.4.1" />
+      <button id="btn-connect" class="btn btn-primary">CONNECT</button>
+      <button id="btn-disconnect" class="btn btn-ghost">DISCONNECT</button>
+    </div>
+    <small>All requests use <code>ESP32_IP</code> in <code>js/api.js</code>. Default AP mode: <code>192.168.4.1</code></small>
+  </div>
+  <div class="conn-field">
+    <label>SENSOR ENDPOINT</label>
+    <div class="ip-row">
+      <input id="sensor-endpoint" type="text" value="/status" spellcheck="false" />
+      <button id="btn-poll-now" class="btn btn-ghost">POLL NOW</button>
+    </div>
+    <small>Poll every <span id="poll-label">1.5</span>s &nbsp;•&nbsp; Timeout 3.5s &nbsp;•&nbsp; <span id="last-poll">last poll: —</span></small>
+  </div>
+  <div class="conn-field keys">
+    <div class="kbd-hint"><kbd>W</kbd> fwd <kbd>A</kbd> left <kbd>S</kbd> back <kbd>D</kbd> right <kbd>Space</kbd> stop</div>
+    <button id="btn-emergency-top" class="btn btn-danger">⛔ EMERGENCY STOP</button>
+  </div>
+</section>
+
+<main>
+<!-- ================= 1. MAIN DASHBOARD ================= -->
+<section id="dashboard" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">01</span> COMMAND DASHBOARD</h2>
+    <p>Live robot state • sensor telemetry • system health</p>
+  </div>
+
+  <div class="grid grid-3">
+    <!-- A. ROBOT STATUS -->
+    <div class="panel status-panel">
+      <div class="panel-title"><span class="pulse"></span> ROBOT STATUS</div>
+      <div class="status-rows">
+        <div class="srow"><span>Connection</span><strong id="st-connection" class="bad">OFFLINE</strong></div>
+        <div class="srow"><span>Mode</span><strong id="st-mode">MANUAL</strong></div>
+        <div class="srow"><span>Direction</span><strong id="st-direction">STOP</strong></div>
+        <div class="srow"><span>Speed</span><strong id="st-speed">0 / 255 (0%)</strong></div>
+        <div class="srow"><span>System</span><strong id="st-system" class="ok">NOMINAL</strong></div>
+      </div>
+      <label class="lbl">BATTERY <span id="battery-val">82%</span></label>
+      <div class="bar"><div class="bar-fill batt" id="battery-bar" style="width:82%"></div></div>
+      <label class="lbl">SPEED <span id="speed-val2">0%</span></label>
+      <div class="bar"><div class="bar-fill speed" id="speed-bar" style="width:0%"></div></div>
+      <div class="sys-line" id="sys-line">Awaiting telemetry…</div>
+    </div>
+
+    <!-- B. DISTANCES -->
+    <div class="panel">
+      <div class="panel-title"><span class="pulse cyan"></span> ULTRASONIC ARRAY <span class="tag">HC-SR04 ×3</span></div>
+      <div class="dist-grid">
+        <div class="dist" id="card-front">
+          <div class="dist-label">FRONT</div>
+          <div class="dist-val"><span id="front-val">--</span><small>cm</small></div>
+          <div class="bar small"><div class="bar-fill" id="front-bar" style="width:0%"></div></div>
+          <div class="dist-state" id="front-state">—</div>
+        </div>
+        <div class="dist" id="card-left">
+          <div class="dist-label">LEFT</div>
+          <div class="dist-val"><span id="left-val">--</span><small>cm</small></div>
+          <div class="bar small"><div class="bar-fill" id="left-bar" style="width:0%"></div></div>
+          <div class="dist-state" id="left-state">—</div>
+        </div>
+        <div class="dist" id="card-right">
+          <div class="dist-label">RIGHT</div>
+          <div class="dist-val"><span id="right-val">--</span><small>cm</small></div>
+          <div class="bar small"><div class="bar-fill" id="right-bar" style="width:0%"></div></div>
+          <div class="dist-state" id="right-state">—</div>
+        </div>
+      </div>
+      <div class="env-grid">
+        <div class="env"><span>TEMP</span><strong><span id="temp-val">--</span> °C</strong></div>
+        <div class="env"><span>HUMIDITY</span><strong><span id="hum-val">--</span> %</strong></div>
+        <div class="env"><span>VIBRATION</span><strong id="vib-val">NORMAL</strong></div>
+        <div class="env"><span>BUZZER</span><strong id="buzzer-val">OFF</strong></div>
+      </div>
+    </div>
+
+    <!-- MPU + GPS mini -->
+    <div class="panel">
+      <div class="panel-title"><span class="pulse green"></span> MOTION &amp; POSITION</div>
+      <div class="mpu">
+        <div class="mpu-head">MPU6050 ACCELEROMETER <span class="tag">g</span></div>
+        <div class="accel-row"><span>X</span><div class="bar small"><div class="bar-fill accel" id="accx-bar" style="width:50%"></div></div><code id="accx-val">0.00</code></div>
+        <div class="accel-row"><span>Y</span><div class="bar small"><div class="bar-fill accel" id="accy-bar" style="width:50%"></div></div><code id="accy-val">0.00</code></div>
+        <div class="accel-row"><span>Z</span><div class="bar small"><div class="bar-fill accel" id="accz-bar" style="width:50%"></div></div><code id="accz-val">0.00</code></div>
+      </div>
+      <div class="gps-mini">
+        <div><span>LAT</span><code id="lat-mini">—</code></div>
+        <div><span>LON</span><code id="lon-mini">—</code></div>
+        <div><span>FIX</span><strong id="fix-mini">SEARCHING</strong></div>
+        <div><span>SATS</span><strong id="sats-mini">0</strong></div>
+      </div>
+      <div class="demo-note hidden" id="demo-note">DEMO MODE — SIMULATED DATA</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 2. ROBOT CONTROL ================= -->
+<section id="control" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">02</span> ROBOT CONTROL</h2>
+    <p>Manual drive • speed • safety — sends HTTP requests to ESP32</p>
+  </div>
+  <div class="grid grid-2">
+    <div class="panel control-panel">
+      <div class="panel-title">DRIVE MODE</div>
+      <div class="seg">
+        <button id="mode-manual" class="seg-btn active">MANUAL</button>
+        <button id="mode-auto" class="seg-btn">AUTONOMOUS</button>
+      </div>
+      <div class="dpad-wrap">
+        <div class="dpad">
+          <span></span>
+          <button class="dbtn up" data-cmd="forward" aria-label="Forward">▲<small>FORWARD</small></button>
+          <span></span>
+          <button class="dbtn left" data-cmd="left" aria-label="Left">◀<small>LEFT</small></button>
+          <button class="dbtn stop" data-cmd="stop" aria-label="Stop">■<small>STOP</small></button>
+          <button class="dbtn right" data-cmd="right" aria-label="Right">▶<small>RIGHT</small></button>
+          <span></span>
+          <button class="dbtn down" data-cmd="backward" aria-label="Reverse">▼<small>REVERSE</small></button>
+          <span></span>
+        </div>
+        <div class="drive-side">
+          <label class="lbl">SPEED <span id="speed-pct">0%</span></label>
+          <input type="range" id="speed-slider" min="0" max="255" value="150" />
+          <div class="speed-num"><span id="speed-num">150</span><small>/255</small></div>
+          <button id="btn-speed-apply" class="btn btn-primary btn-block">SET SPEED</button>
+          <div class="endpoints-hint">GET <code>/forward /backward /left /right /stop</code><br/>GET <code>/speed?value=150</code> <code>/mode?value=auto</code></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel safety-panel">
+      <div class="panel-title danger">SAFETY</div>
+      <button id="btn-emergency" class="emergency">⛔ EMERGENCY STOP<small>PRESS SPACE • SENDS /stop</small></button>
+      <div class="safety-rows">
+        <div class="srow"><span>Link guard</span><strong id="link-guard">ARMED</strong></div>
+        <div class="srow"><span>Last command</span><strong id="last-cmd">—</strong></div>
+        <div class="srow"><span>Last ack</span><strong id="last-ack">—</strong></div>
+      </div>
+      <p class="muted">If the ESP32 link is lost: status flips to <b>OFFLINE</b>, movement commands are blocked, and a warning is logged. Demo mode keeps the UI usable for presentation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3 + 4 AUTONOMOUS + VISUALIZATION ================= -->
+<section id="autonomous" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">03</span> AUTONOMOUS PATROL</h2>
+    <p>Onboard obstacle avoidance using 3× ultrasonic + servo sweep</p>
+  </div>
+  <div class="grid grid-3">
+    <div class="panel">
+      <div class="panel-title">AUTONOMOUS CONTROL</div>
+      <div class="auto-btns">
+        <button id="btn-auto-start" class="btn btn-success">▶ START PATROL</button>
+        <button id="btn-auto-stop" class="btn btn-ghost">■ STOP</button>
+      </div>
+      <div class="decision-label">CURRENT DECISION</div>
+      <div class="decision" id="decision">PATH CLEAR</div>
+      <ul class="auto-logic">
+        <li><code>front &lt; 25cm</code> → stop → scan L/R → turn to clearer side</li>
+        <li><code>25–60cm</code> → caution, reduce speed</li>
+        <li><code>&gt; 60cm</code> → forward, path clear</li>
+        <li>vibration trip → <b>INTRUSION DETECTED</b>, buzzer ON</li>
+      </ul>
+    </div>
+
+    <div class="panel surround-panel">
+      <div class="panel-title">SURROUNDINGS</div>
+      <div class="surround">
+        <div class="sur-top"><span>FRONT</span><strong id="sur-front">-- cm</strong><i id="sur-front-dot" class="sdot"></i></div>
+        <div class="sur-mid">
+          <div class="sur-side"><span>LEFT</span><strong id="sur-left">-- cm</strong><i id="sur-left-dot" class="sdot"></i></div>
+          <div class="sur-rover">GUARD-X<br/>🤖</div>
+          <div class="sur-side"><span>RIGHT</span><strong id="sur-right">-- cm</strong><i id="sur-right-dot" class="sdot"></i></div>
+        </div>
+      </div>
+      <small class="muted">🟢 safe &gt;60 &nbsp; 🟡 caution 25–60 &nbsp; 🔴 obstacle &lt;25</small>
+    </div>
+
+    <div class="panel" id="visualization">
+      <div class="panel-title">LIVE ROVER VISUALIZATION <span class="tag">TOP-DOWN</span></div>
+      <div class="rover-stage">
+        <div class="fov fov-left" id="fov-left"></div>
+        <div class="fov fov-front" id="fov-front"></div>
+        <div class="fov fov-right" id="fov-right"></div>
+        <svg class="rover-svg" viewBox="0 0 220 300" role="img" aria-label="GUARD-X top-down diagram">
+          <rect class="wheel fl" x="18" y="60" width="26" height="58" rx="7"/>
+          <rect class="wheel fr" x="176" y="60" width="26" height="58" rx="7"/>
+          <rect class="wheel rl" x="18" y="185" width="26" height="58" rx="7"/>
+          <rect class="wheel rr" x="176" y="185" width="26" height="58" rx="7"/>
+          <rect x="48" y="45" width="124" height="212" rx="18" class="chassis"/>
+          <rect x="62" y="60" width="96" height="40" rx="8" class="deck"/>
+          <circle cx="110" cy="80" r="10" class="esp"/>
+          <text x="110" y="84" text-anchor="middle" class="svg-txt">ESP32</text>
+          <rect x="70" y="118" width="80" height="44" rx="6" class="deck"/>
+          <circle cx="92" cy="140" r="7" class="gpsdot"/>
+          <text x="122" y="137" class="svg-txt small">GPS</text>
+          <text x="122" y="149" class="svg-txt small dim">NEO-6M</text>
+          <circle cx="80" cy="52" r="7" class="us"/>
+          <circle cx="110" cy="46" r="7" class="us"/>
+          <circle cx="140" cy="52" r="7" class="us"/>
+          <rect x="86" y="180" width="48" height="30" rx="6" class="deck"/>
+          <text x="110" y="199" text-anchor="middle" class="svg-txt small">L298N</text>
+          <circle cx="110" cy="232" r="8" class="oled-dot"/>
+          <g id="dir-arrow" class="dir-stop">
+            <polygon points="110,112 98,132 104,132 104,148 116,148 116,132 122,132" />
+          </g>
+        </svg>
+        <div class="rover-dir">HEADING: <strong id="rover-dir">STOP</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5. GPS MAP ================= -->
+<section id="gps" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">04</span> GPS TRACKING</h2>
+    <p>Leaflet + OpenStreetMap • live rover marker • travelled path</p>
+  </div>
+  <div class="grid grid-gps">
+    <div class="panel gps-info">
+      <div class="panel-title">POSITION <span id="gps-fix-badge" class="badge warn">GPS SEARCHING</span></div>
+      <div class="gps-rows">
+        <div><span>LATITUDE</span><code id="gps-lat">—</code></div>
+        <div><span>LONGITUDE</span><code id="gps-lon">—</code></div>
+        <div><span>SATELLITES</span><strong id="gps-sats">0</strong></div>
+        <div><span>HEADING</span><strong id="gps-heading">—</strong></div>
+        <div><span>POINTS</span><strong id="gps-points">0</strong></div>
+      </div>
+      <div class="gps-btns">
+        <button id="btn-center" class="btn btn-primary">◎ CENTER ON ROVER</button>
+        <button id="btn-clear-route" class="btn btn-ghost">CLEAR ROUTE</button>
+        <button id="btn-road-route" class="btn btn-ghost" title="Snap travelled path to real roads via OpenRouteService">🛣 ROAD ROUTE</button>
+        <label class="follow"><input type="checkbox" id="follow-toggle" checked /> auto-follow</label>
+      </div>
+      <div class="road-status muted" id="ors-road-status">Road geometry: straight-line track (add ORS key for real roads)</div>
+      <div class="map-key">
+        <div class="key-title">MAP API KEY (optional)</div>
+        <p class="muted">OpenStreetMap works with <b>no key</b>. To use a keyed provider (e.g. MapTiler / Thunderforest / Mapbox raster), paste the key + tile URL below. Stored in <code>GUARDX_CONFIG.MAP_API_KEY</code> (<code>js/api.js</code>).</p>
+        <label>API KEY</label>
+        <input id="map-key" type="text" placeholder="pk. / key — leave empty for OSM" autocomplete="off" />
+        <label>TILE URL TEMPLATE</label>
+        <input id="map-tile" type="text" value="https://tile.openstreetmap.org/{z}/{x}/{y}.png" spellcheck="false" />
+        <div class="ip-row">
+          <button id="btn-apply-map" class="btn btn-ghost">APPLY MAP SOURCE</button>
+          <button id="btn-osm-reset" class="btn btn-ghost">RESET TO OSM</button>
+        </div>
+        <small>OSM default: <code>https://tile.openstreetmap.org/{z}/{x}/{y}.png</code> © OpenStreetMap contributors. Do not bulk-download tiles.</small>
+      </div>
+    </div>
+    <div class="panel map-panel">
+      <div class="panel-title">LIVE MAP <span class="tag" id="map-src-tag">OSM • NO KEY</span></div>
+      <div id="gps-map" aria-label="GUARD-X GPS map"></div>
+      <div class="map-foot"><span>© OpenStreetMap contributors</span><span id="map-coords">— , —</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= API KEYS + AI (BRING YOUR OWN) ================= -->
+<section id="integrations" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">05</span> API KEYS &amp; LIVE AI ANALYSIS</h2>
+    <p>Optional enhancements • keys stay in your browser only</p>
+  </div>
+  <div class="grid grid-2">
+    <div class="apikeys">
+      <div class="apikeys-title">API KEYS (OPTIONAL · BRING YOUR OWN)</div>
+
+      <div class="api-card">
+        <div class="api-head">
+          <span>🔑 <strong>OpenRouteService — real road geometry</strong></span>
+          <span class="api-conn" id="ors-status"><i></i>NOT SET</span>
+        </div>
+        <div class="api-input-row">
+          <input id="ors-key" type="password" placeholder="eyJvcmMiOiI1YjNjZTM1OTc4NExMT…" autocomplete="off" spellcheck="false" />
+          <button class="eye-btn" id="btn-toggle-ors" aria-label="Show/hide ORS key">🚫👁</button>
+        </div>
+        <a class="api-link" href="https://openrouteservice.org" target="_blank" rel="noopener">Get a free key → openrouteservice.org</a>
+      </div>
+
+      <div class="api-card">
+        <div class="api-head">
+          <span>🔑 <strong>Google Gemini — live AI analysis</strong></span>
+          <span class="api-conn" id="gemini-status"><i></i>NOT SET</span>
+        </div>
+        <div class="api-input-row">
+          <input id="gemini-key" type="password" placeholder="AIzaSy… — paste Gemini API key" autocomplete="off" spellcheck="false" />
+          <button class="eye-btn" id="btn-toggle-gemini" aria-label="Show/hide Gemini key">🚫👁</button>
+        </div>
+        <a class="api-link" href="https://aistudio.google.com" target="_blank" rel="noopener">Get a free key → aistudio.google.com</a>
+      </div>
+
+      <div class="api-actions">
+        <button id="btn-save-keys" class="save-keys">SAVE KEYS</button>
+        <button id="btn-clear-keys" class="btn btn-ghost">CLEAR</button>
+      </div>
+      <small class="muted">Keys are stored <b>only in this browser's localStorage</b> and sent only to their own provider (ORS → openrouteservice.org, Gemini → googleapis.com). OSM map + dashboard work with no keys.</small>
+    </div>
+
+    <div class="panel ai-panel">
+      <div class="panel-title">🤖 GEMINI — LIVE ROVER ANALYSIS <span class="badge warn" id="ai-status">NO KEY</span></div>
+      <p class="muted">Sends the latest telemetry snapshot (distances, temp/humidity, GPS, battery, mode) to Gemini for a short safety assessment. Nothing leaves the browser except to Google when you press Analyze.</p>
+      <div class="ai-btns">
+        <button id="btn-ai-analyze" class="btn btn-success">✨ ANALYZE WITH AI</button>
+        <button id="btn-ai-clear" class="btn btn-ghost">CLEAR</button>
+      </div>
+      <div class="ai-output" id="ai-output">Press ANALYZE WITH AI — needs a Gemini key above. Example output: patrol risk, sensor anomalies, next action.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 6 + 7 + 8 SECURITY / LOG / OLED ================= -->
+<section id="security" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">06</span> SECURITY &amp; TELEMETRY LOG</h2>
+    <p>Vibration intrusion detection • event console • onboard OLED mirror</p>
+  </div>
+  <div class="grid grid-3">
+    <div class="panel security-panel" id="security-panel">
+      <div class="panel-title">SYSTEM SECURITY</div>
+      <div class="secure-badge ok" id="secure-badge">🟢 SECURE</div>
+      <div class="srow"><span>Vibration</span><strong id="sec-vib">NORMAL</strong></div>
+      <div class="srow"><span>Buzzer</span><strong id="sec-buzzer">OFF</strong></div>
+      <div class="srow"><span>Alert state</span><strong id="sec-alert">NONE</strong></div>
+      <div class="alert-msg hidden" id="alert-msg">🔴 INTRUSION DETECTED — vibration threshold exceeded. Rover halted, buzzer ON.</div>
+      <button id="btn-ack" class="btn btn-primary btn-block" disabled>ACKNOWLEDGE ALERT</button>
+    </div>
+
+    <div class="panel log-panel">
+      <div class="panel-title">EVENT LOG <button id="btn-clear-log" class="btn btn-ghost btn-xs">CLEAR LOG</button></div>
+      <ul id="event-log" aria-live="polite"></ul>
+    </div>
+
+    <div class="panel oled-panel">
+      <div class="panel-title">OLED MIRROR <span class="tag">0.96" SSD1306</span></div>
+      <div class="oled">
+        <div class="oled-screen">
+          <div class="oled-head">┌─ GUARD-X ─────────┐</div>
+          <div>STATUS: <span id="oled-status">OFFLINE</span></div>
+          <div>MODE: <span id="oled-mode">MANUAL</span></div>
+          <div>TEMP: <span id="oled-temp">--.-</span> C</div>
+          <div>DIST: <span id="oled-dist">---</span> cm</div>
+          <div>BATT: <span id="oled-batt">--</span>% <span id="oled-dir">STOP</span></div>
+          <div class="oled-head">└──────────────────┘</div>
+        </div>
+      </div>
+      <small class="muted">Mirrors what the physical OLED on the rover displays. Updates with each telemetry poll.</small>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 9. ARCHITECTURE ================= -->
+<section id="architecture" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">07</span> SYSTEM ARCHITECTURE</h2>
+    <p>Sensors → ESP32 → actuation + Wi-Fi dashboard</p>
+  </div>
+  <div class="panel arch-panel">
+    <div class="arch">
+      <div class="arch-layer sensors">
+        <div class="node">HC-SR04 ×3<span>distance</span></div>
+        <div class="node">MPU6050<span>motion</span></div>
+        <div class="node">DHT11<span>temp/hum</span></div>
+        <div class="node">NEO-6M GPS<span>position</span></div>
+        <div class="node">VIBRATION<span>intrusion</span></div>
+      </div>
+      <div class="arch-link"><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="arch-layer"><div class="node brain">ESP32 DevKit<span>control • Wi-Fi AP • web server</span></div></div>
+      <div class="arch-link split"><span></span><span></span></div>
+      <div class="arch-layer out">
+        <div class="node">L298N → 4 MOTORS<span>4WD drive</span></div>
+        <div class="node">SERVO • OLED • BUZZER • LED<span>servo sweep • display • alerts</span></div>
+        <div class="node">WI-FI → WEB DASHBOARD<span>this interface</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 10 + 11 ABOUT + HARDWARE ================= -->
+<section id="about" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">08</span> ABOUT GUARD-X</h2>
+  </div>
+  <div class="grid grid-2">
+    <div class="panel">
+      <div class="panel-title">MISSION</div>
+      <p><strong>GUARD-X is an ESP32-based autonomous multi-sensor security rover designed for mobile environmental and security monitoring.</strong></p>
+      <div class="feat-grid">
+        <div>📡 Wireless control</div><div>🧭 Autonomous avoidance</div>
+        <div>🎛 Multi-sensor monitor</div><div>🛰 GPS awareness</div>
+        <div>🌡 Environment sensing</div><div>🚨 Vibration intrusion detect</div>
+        <div>🖥 Real-time dashboard</div><div>📟 OLED status display</div>
+        <div>🚗 4WD mobility</div>
+      </div>
+      <div class="panel-title" style="margin-top:18px">APPLICATIONS</div>
+      <div class="app-tags"><span>Homes &amp; compounds</span><span>Warehouses</span><span>Laboratories</span><span>Campuses</span><span>Farms</span><span>Construction sites</span><span>Restricted areas</span><span>Search &amp; monitoring</span></div>
+    </div>
+    <div class="panel" id="hardware">
+      <div class="panel-title">HARDWARE MANIFEST</div>
+      <div class="hw-grid" id="hw-grid"><!-- rendered by app.js --></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div><strong>GUARD-X</strong> • Autonomous Multi-Sensor Security Rover • ECE Project Demonstration</div>
+  <div class="muted">ESP32 serves / polls JSON • Dashboard: HTML/CSS/Vanilla JS • Map: Leaflet + © OpenStreetMap contributors</div>
+</footer>
+</main>
+
+<div id="toast-wrap" aria-live="polite"></div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
