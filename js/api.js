@@ -320,6 +320,34 @@ async function probeConnection() {
 // ---- 7. OPTIONAL API KEYS (localStorage only, never hardcoded) ----
 const LS_ORS_KEY = "guardx_ors_key";
 const LS_GEMINI_KEY = "guardx_gemini_key";
+const LS_IP = "guardx_ip";       // ESP32 target persists across pages
+const LS_EP = "guardx_ep";       // sensor endpoint persists across pages
+const SS_DEMO = "guardx_demo";   // demo toggle persists per tab ("1"/"0")
+
+function loadNetConfig() {
+  try {
+    const ip = localStorage.getItem(LS_IP), ep = localStorage.getItem(LS_EP);
+    const ipEl = document.getElementById("esp-ip"), epEl = document.getElementById("sensor-endpoint");
+    if (ipEl && ip) ipEl.value = ip;
+    if (epEl && ep) epEl.value = ep;
+  } catch (e) { /* private mode */ }
+}
+function saveNetConfig() {
+  try {
+    const ipEl = document.getElementById("esp-ip"), epEl = document.getElementById("sensor-endpoint");
+    if (ipEl && ipEl.value.trim()) localStorage.setItem(LS_IP, ipEl.value.trim());
+    if (epEl && epEl.value.trim()) localStorage.setItem(LS_EP, epEl.value.trim());
+  } catch (e) { /* ignore */ }
+}
+function loadDemoPref() {
+  try {
+    const s = sessionStorage.getItem(SS_DEMO);
+    return s === null ? true : s === "1"; // default ON for presentation safety
+  } catch (e) { return true; }
+}
+function saveDemoPref(on) {
+  try { sessionStorage.setItem(SS_DEMO, on ? "1" : "0"); } catch (e) { /* ignore */ }
+}
 
 function getOrsKey() {
   const el = document.getElementById("ors-key");

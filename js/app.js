@@ -138,6 +138,7 @@
 
     const demo = on("demo-toggle", "change", () => {
       GuardXState.demoMode = demo.checked;
+      saveDemoPref(demo.checked);
       if (demo.checked) resetDemo();
       addLog(demo.checked ? "DEMO MODE ENABLED — simulated data" : "DEMO MODE OFF — live ESP32 only", demo.checked ? "warn" : "ok");
       updateConnectionUI();
@@ -146,6 +147,7 @@
     if (demo) GuardXState.demoMode = demo.checked;
 
     on("btn-connect", "click", async () => {
+      saveNetConfig();
       addLog("Probing ESP32 @ " + getBaseUrl() + " …");
       const ok = await probeConnection();
       addLog(ok ? "ESP32 CONNECTED — live telemetry" : "ESP32 UNREACHABLE — check IP / AP join", ok ? "ok" : "alarm");
@@ -163,7 +165,7 @@
       else toast("WS client unavailable", "err");
     });
     on("btn-poll-now", "click", pollOnce);
-    on("esp-ip", "change", updateConnectionUI);
+    on("esp-ip", "change", () => { saveNetConfig(); updateConnectionUI(); });
 
     on("mode-manual", "click", () => setMode("manual"));
     on("mode-auto", "click", () => setMode("auto"));
@@ -343,6 +345,9 @@
   function init() {
     renderHardware();
     resetDemo();
+    loadNetConfig();
+    const demoBox = get("demo-toggle");
+    if (demoBox) demoBox.checked = loadDemoPref(); // keep link choice across pages
     bindUI();
     bindDrive();
     bindShowroom();
@@ -353,12 +358,23 @@
     renderMode(GuardXState.mode || "MANUAL");
 
     const hasLog = !!get("event-log");
-    if (hasLog) {
-      addLog("SYSTEM INITIALIZED", "ok");
-      addLog("Dashboard ready — " + (GuardXState.demoMode ? "DEMO MODE (simulated data)" : "live mode"), "warn");
+    if (GuardXState.demoMode) {
+      if (hasLog) {
+        addLog("SYSTEM INITIALIZED", "ok");
+        addLog("Dashboard ready — DEMO MODE (simulated data)", "warn");
+      }
+      pollOnce();
+    } else {
+      // user left demo OFF → silently rejoin the live rover on this page too
+      if (hasLog) addLog("Rejoining live ESP32 link…");
+      probeConnection().then((ok) => {
+        if (ok) {
+          addLog("Auto-rejoined ESP32 @ " + getBaseUrl(), "ok");
+          if (typeof connectWS === "function") connectWS();
+        }
+        pollOnce();
+      });
     }
-
-    pollOnce();
     setInterval(pollOnce, GUARDX_CONFIG.POLL_INTERVAL_MS);
     const pl = get("poll-label");
     if (pl) pl.textContent = (GUARDX_CONFIG.POLL_INTERVAL_MS / 1000).toFixed(1);
