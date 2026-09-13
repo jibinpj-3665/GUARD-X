@@ -40,8 +40,10 @@ const GUARDX_CONFIG = {
 
   // ---- 2b. OPTIONAL BRING-YOUR-OWN KEYS (also editable in UI, stored in localStorage) ----
   ORS_KEY: "",                      // OpenRouteService — real road geometry
-  GEMINI_KEY: ""                     // Google Gemini — live AI analysis
+  GEMINI_KEY: "",                    // Google Gemini — live AI analysis
+  GEMINI_MODEL: "gemini-3.6-flash"   // primary model (verified live); fallbacks below
 };
+const GEMINI_MODEL_FALLBACKS = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
 
 // ---- 3. RUNTIME STATE (shared) ----
 const GuardXState = {
@@ -381,14 +383,32 @@ async function analyzeWithGemini(telemetry) {
   if (!key) throw new Error("No Gemini key saved");
   const d = telemetry || GuardXState.lastTelemetry;
   if (!d) throw new Error("No telemetry yet — wait for a poll");
+  const prompt = buildTelemetryPrompt(d);
+  // try configured model first, then known-good fallbacks (models retire often)
+  const configured = (GUARDX_CONFIG.GEMINI_MODEL || "").trim();
+  const models = [configured, ...GEMINI_MODEL_FALLBACKS].filter((m, i, a) => m && a.indexOf(m) === i);
+  let lastErr = null;
+  for (const model of models) {
+    try {
+      return await geminiGenerate(model, prompt, key);
+    } catch (e) {
+      lastErr = e;
+      // retired/unknown model → try next; auth/quota/overload errors → stop immediately
+      if (!/HTTP 404/.test(String((e && e.message) || e))) throw e;
+      if (typeof addLog === "function") addLog("Gemini model " + model + " retired, trying next…", "warn");
+    }
+  }
+  throw lastErr || new Error("Gemini request failed");
+}
+async function geminiGenerate(model, promptText, key) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 20000);
   try {
-    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + encodeURIComponent(key), {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key), {
       method: "POST",
       signal: ctrl.signal,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: buildTelemetryPrompt(d) }] }] })
+      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
