@@ -277,6 +277,11 @@ body.alarm .security-panel{border-color:var(--red);box-shadow:0 0 30px rgba(255,
 .save-keys{flex:1;border:0;cursor:pointer;border-radius:12px;padding:14px;font-weight:900;letter-spacing:1.5px;font-size:.9rem;color:#04211b;background:linear-gradient(90deg,#34d399,#14b8a6);box-shadow:0 6px 22px rgba(20,184,166,.35)}
 .save-keys:hover{filter:brightness(1.08)}
 .road-status{margin-top:10px;font-family:var(--mono);font-size:.72rem}
+.fence-box{margin-top:14px;border-top:1px dashed var(--line2);padding-top:12px}
+.fence-box .gps-btns{margin-top:8px}
+.fence-box .srow{font-size:.82rem}
+#gps-map.marking{cursor:crosshair}
+#gps-map.marking .leaflet-grab{cursor:crosshair}
 .ai-panel .ai-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .ai-output{background:#0a1322;border:1px solid var(--line2);border-radius:12px;padding:12px;font-family:var(--mono);font-size:.78rem;line-height:1.65;white-space:pre-wrap;min-height:130px;max-height:300px;overflow-y:auto;color:var(--txt)}
 .ai-output.loading{border-color:var(--cyan);color:var(--cyan)}

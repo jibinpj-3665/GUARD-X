@@ -54,7 +54,11 @@ const GuardXState = {
   lastCommand: "—",
   acknowledged: true,     // intrusion ack flag
   followMap: true,
-  route: [],               // [[lat,lon],...]
+  route: [],               // [[lat,lon],...] travelled path (persisted per tab)
+  distM: 0,                // metres travelled in this session
+  fence: [],               // [[lat,lon],...] restricted-area boundary
+  marking: false,          // true while user taps map to draw fence
+  fenceInside: false,      // last known inside/outside state
   lastTelemetry: null      // latest parsed sensor snapshot (for AI analysis)
 };
 

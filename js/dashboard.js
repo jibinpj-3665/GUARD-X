@@ -7,8 +7,11 @@ const $ = (id) => document.getElementById(id);
 // Safe DOM helpers — every page only contains some panels, so missing IDs are normal.
 function setT(id, v) { const e = $(id); if (e) e.textContent = v; }
 function setW(id, p) { const e = $(id); if (e) e.style.width = p; }
-let map = null, roverMarker = null, routeLine = null, roadLine = null, lastGps = null;
+let map = null, roverMarker = null, routeLine = null, roadLine = null;
+let fenceLine = null, fencePoly = null, lastGps = null;
 let demoState = null;
+const LS_FENCE = "guardx_fence";   // restricted area persists in this browser
+const SS_ROUTE = "guardx_route";   // movement trail persists per tab across pages
 
 /* ---------------- EVENT LOG ---------------- */
 function timestamp() {
@@ -341,7 +344,12 @@ function initMap() {
   roverMarker = L.marker([10.5276, 76.2144], { icon }).addTo(map).bindPopup("GUARD-X");
   routeLine = L.polyline([], { color: "#00e5ff", weight: 3, opacity: 0.9 }).addTo(map);
   roadLine = L.polyline([], { color: "#ffaa00", weight: 4, opacity: 0.95, dashArray: "8 6" }).addTo(map);
+  fenceLine = L.polyline([], { color: "#ff2d55", weight: 2, dashArray: "5 5" }).addTo(map);
+  fencePoly = L.polygon([], { color: "#ff2d55", weight: 2, dashArray: "6 4", fillColor: "#ff2d55", fillOpacity: 0.15 }).addTo(map);
+  map.on("click", onFenceMapClick);
   setT("map-src-tag", tileUrl.includes("openstreetmap") ? "OSM • NO KEY" : "CUSTOM SOURCE");
+  restoreRoute();
+  loadFence();
 }
 
 function refreshMapSource() {
@@ -391,12 +399,17 @@ function updateMapPosition(d, isDemo) {
   const r = GuardXState.route;
   const last = r[r.length - 1];
   if (!last || Math.abs(last[0] - pos[0]) > 0.00002 || Math.abs(last[1] - pos[1]) > 0.00002) {
+    if (last) GuardXState.distM += haversineM(last, pos);
     r.push(pos);
+    if (r.length > 500) { r.shift(); } // cap stored trail
     if (routeLine) routeLine.setLatLngs(r);
     setT("gps-points", r.length);
+    setT("gps-dist", fmtDist(GuardXState.distM));
+    persistRoute();
   }
   roverMarker.bindPopup("GUARD-X<br>" + pos[0].toFixed(5) + ", " + pos[1].toFixed(5) + (isDemo ? "<br>DEMO DATA" : ""));
   if (GuardXState.followMap) map.setView(pos, Math.max(map.getZoom(), 16), { animate: true });
+  checkFence(pos);
 }
 
 /* ---------------- API KEYS STATUS ---------------- */
@@ -438,4 +451,147 @@ function setAiOutput(text, loading) {
   if (!el) return;
   el.textContent = text;
   el.classList.toggle("loading", !!loading);
+}
+
+/* ---------------- MOVEMENT TRAIL (persisted per tab) ---------------- */
+function haversineM(a, b) {
+  const R = 6371000, toR = (d) => d * Math.PI / 180;
+  const dLat = toR(b[0] - a[0]), dLon = toR(b[1] - a[1]);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toR(a[0])) * Math.cos(toR(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function fmtDist(m) {
+  if (!isFinite(m) || m < 0) return "—";
+  return m < 1000 ? Math.round(m) + " m" : (m / 1000).toFixed(2) + " km";
+}
+function persistRoute() {
+  try { sessionStorage.setItem(SS_ROUTE, JSON.stringify(GuardXState.route.slice(-500))); } catch (e) { /* ignore */ }
+}
+function restoreRoute() {
+  try {
+    const raw = sessionStorage.getItem(SS_ROUTE);
+    if (!raw) return;
+    const pts = JSON.parse(raw);
+    if (!Array.isArray(pts) || !pts.length) return;
+    GuardXState.route = pts.filter((p) => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])).slice(-500);
+    GuardXState.distM = 0;
+    for (let i = 1; i < GuardXState.route.length; i++) {
+      GuardXState.distM += haversineM(GuardXState.route[i - 1], GuardXState.route[i]);
+    }
+    if (routeLine) routeLine.setLatLngs(GuardXState.route);
+    setT("gps-points", GuardXState.route.length);
+    setT("gps-dist", fmtDist(GuardXState.distM));
+  } catch (e) { /* ignore */ }
+}
+function clearStoredRoute() {
+  try { sessionStorage.removeItem(SS_ROUTE); } catch (e) { /* ignore */ }
+  GuardXState.distM = 0;
+  setT("gps-dist", "0 m");
+}
+
+/* ---------------- RESTRICTED AREA / GEOFENCE ---------------- */
+function pointInFence(latlon) {
+  const poly = GuardXState.fence;
+  if (!poly || poly.length < 3) return false;
+  const x = latlon[1], y = latlon[0]; // lon, lat
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][1], yi = poly[i][0], xj = poly[j][1], yj = poly[j][0];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function renderFenceStatus() {
+  const n = GuardXState.fence.length;
+  const badge = $("fence-status"), st = $("fence-state"), cnt = $("fence-count");
+  const finBtn = $("btn-fence-finish");
+  if (cnt) cnt.textContent = n;
+  if (badge) badge.style.color = "";
+  if (GuardXState.marking) {
+    if (badge) { badge.innerHTML = "<i></i>MARKING"; badge.classList.remove("off"); }
+    if (st) st.textContent = n + " point(s) — tap map, then FINISH";
+    if (finBtn) finBtn.classList.toggle("hidden", n < 3);
+    const mapEl = $("gps-map");
+    if (mapEl) mapEl.classList.add("marking");
+    return;
+  }
+  const mapEl = $("gps-map");
+  if (mapEl) mapEl.classList.remove("marking");
+  if (finBtn) finBtn.classList.add("hidden");
+  if (n < 3) {
+    if (badge) { badge.innerHTML = "<i></i>NOT SET"; badge.classList.add("off"); }
+    if (st) st.textContent = "—";
+    return;
+  }
+  if (GuardXState.fenceInside) {
+    if (badge) { badge.innerHTML = "<i></i>ROVER INSIDE!"; badge.classList.remove("off"); badge.style.color = "var(--red)"; }
+    if (st) st.textContent = "🔴 INSIDE restricted area";
+  } else {
+    if (badge) { badge.innerHTML = "<i></i>ARMED"; badge.classList.remove("off"); }
+    if (st) st.textContent = "🟢 Rover outside (" + n + " pts)";
+  }
+}
+function drawFenceLayers() {
+  if (fencePoly) fencePoly.setLatLngs(GuardXState.fence.length >= 3 && !GuardXState.marking ? GuardXState.fence : []);
+  if (fenceLine) fenceLine.setLatLngs(GuardXState.marking ? GuardXState.fence : []);
+}
+function startFenceMarking() {
+  GuardXState.marking = true;
+  GuardXState.fence = [];
+  GuardXState.fenceInside = false;
+  drawFenceLayers();
+  renderFenceStatus();
+  toast("Tap the map to drop boundary points", "ok");
+  if (typeof addLog === "function") addLog("Marking restricted area — tap map", "warn");
+}
+function onFenceMapClick(e) {
+  if (!GuardXState.marking || !e || !e.latlng) return;
+  GuardXState.fence.push([+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)]);
+  drawFenceLayers();
+  renderFenceStatus();
+}
+function finishFence() {
+  if (GuardXState.fence.length < 3) { toast("Need at least 3 points", "err"); return; }
+  GuardXState.marking = false;
+  try { localStorage.setItem(LS_FENCE, JSON.stringify(GuardXState.fence)); } catch (e) { /* ignore */ }
+  drawFenceLayers();
+  // evaluate current rover position immediately
+  if (lastGps) GuardXState.fenceInside = pointInFence(lastGps);
+  renderFenceStatus();
+  if (typeof addLog === "function") addLog("Restricted area armed (" + GuardXState.fence.length + " pts)", "ok");
+  toast("Restricted area armed", "ok");
+}
+function clearFence() {
+  GuardXState.marking = false;
+  GuardXState.fence = [];
+  GuardXState.fenceInside = false;
+  try { localStorage.removeItem(LS_FENCE); } catch (e) { /* ignore */ }
+  drawFenceLayers();
+  renderFenceStatus();
+  if (typeof addLog === "function") addLog("Restricted area cleared", "warn");
+}
+function loadFence() {
+  try {
+    const raw = localStorage.getItem(LS_FENCE);
+    if (!raw) { renderFenceStatus(); return; }
+    const pts = JSON.parse(raw);
+    if (Array.isArray(pts) && pts.length >= 3) GuardXState.fence = pts;
+  } catch (e) { /* ignore */ }
+  drawFenceLayers();
+  renderFenceStatus();
+}
+function checkFence(pos) {
+  if (GuardXState.fence.length < 3 || !pos) return;
+  const inside = pointInFence(pos);
+  if (inside !== GuardXState.fenceInside) {
+    GuardXState.fenceInside = inside;
+    renderFenceStatus();
+    if (inside) {
+      if (typeof addLog === "function") addLog("⛔ ROVER ENTERED RESTRICTED AREA", "alarm");
+      toast("⛔ Rover entered restricted area!", "err");
+    } else {
+      if (typeof addLog === "function") addLog("Rover exited restricted area", "ok");
+      toast("Rover exited restricted area", "ok");
+    }
+  }
 }

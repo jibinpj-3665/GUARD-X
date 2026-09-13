@@ -87,6 +87,17 @@
         <label class="follow"><input type="checkbox" id="follow-toggle" checked /> auto-follow</label>
       </div>
       <div class="road-status muted" id="ors-road-status">Road geometry: straight-line track (add ORS key for real roads)</div>
+      <div class="fence-box">
+        <div class="key-title">⛔ RESTRICTED AREA <span id="fence-status" class="badge warn">NOT SET</span></div>
+        <p class="muted">Tap <b>MARK AREA</b>, then tap the map to drop boundary points (<b>FINISH</b> closes the zone). An alarm fires if GUARD-X enters it. The cyan trail + distance below track rover movement across pages.</p>
+        <div class="gps-btns">
+          <button id="btn-fence-mark" class="btn btn-danger">⛔ MARK AREA</button>
+          <button id="btn-fence-finish" class="btn btn-success hidden">✓ FINISH (<span id="fence-count">0</span>)</button>
+          <button id="btn-fence-clear" class="btn btn-ghost">CLEAR</button>
+        </div>
+        <div class="srow"><span>Zone state</span><strong id="fence-state">—</strong></div>
+        <div class="srow"><span>Distance travelled</span><strong id="gps-dist">0 m</strong></div>
+      </div>
       <div class="map-key">
         <div class="key-title">MAP API KEY (optional)</div>
         <p class="muted">OpenStreetMap works with <b>no key</b>. To use a keyed provider (e.g. MapTiler / Thunderforest / Mapbox raster), paste the key + tile URL below. Stored in <code>GUARDX_CONFIG.MAP_API_KEY</code> (<code>js/api.js</code>).</p>

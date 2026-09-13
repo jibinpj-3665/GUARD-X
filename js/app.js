@@ -180,6 +180,7 @@
       GuardXState.route = [];
       if (typeof routeLine !== "undefined" && routeLine) routeLine.setLatLngs([]);
       if (typeof clearRoadGeometry === "function") clearRoadGeometry();
+      if (typeof clearStoredRoute === "function") clearStoredRoute();
       const gp = get("gps-points");
       if (gp) gp.textContent = "0";
       addLog("Route cleared");
@@ -236,6 +237,14 @@
         toast("ORS: " + e.message, "err");
       }
     });
+
+    // ---- Restricted area / geofence ----
+    on("btn-fence-mark", "click", () => {
+      if (typeof startFenceMarking === "function") startFenceMarking();
+      else toast("Open the GPS page to mark an area", "err");
+    });
+    on("btn-fence-finish", "click", () => { if (typeof finishFence === "function") finishFence(); });
+    on("btn-fence-clear", "click", () => { if (typeof clearFence === "function") clearFence(); });
 
     // ---- Gemini AI analysis ----
     on("btn-ai-analyze", "click", async () => {
