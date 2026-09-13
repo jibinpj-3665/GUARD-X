@@ -541,6 +541,11 @@ function startFenceMarking() {
   GuardXState.fenceInside = false;
   drawFenceLayers();
   renderFenceStatus();
+  // jump straight to the map so the user can tap boundary points immediately
+  const mapEl = $("gps-map");
+  if (mapEl && mapEl.scrollIntoView) {
+    mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   toast("Tap the map to drop boundary points", "ok");
   if (typeof addLog === "function") addLog("Marking restricted area — tap map", "warn");
 }
