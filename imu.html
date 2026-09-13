@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GUARD-X | IMU &amp; Telemetry</title>
+<meta name="description" content="GUARD-X MPU6050 motion, live 3D orientation, graphs and tilt safety." />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
+</head>
+<body data-page="imu">
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="40" height="40">
+          <rect x="6" y="14" width="36" height="20" rx="5" fill="none" stroke="#00e5ff" stroke-width="2.5"/>
+          <circle cx="14" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="34" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="24" cy="24" r="5" fill="none" stroke="#00ff88" stroke-width="2"/>
+          <circle cx="24" cy="24" r="1.8" fill="#00ff88"/>
+          <path d="M24 6v8M14 10l4 5M34 10l-4 5" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">GUARD<span>-X</span></div>
+        <div class="brand-sub">AUTONOMOUS SECURITY ROVER</div>
+      </div>
+    </div>
+    <nav class="topnav" aria-label="Pages">
+      <button class="navdrop-btn" id="navdrop-btn" aria-haspopup="true" aria-expanded="false">☰ PAGES ▾</button>
+      <div class="navdrop-menu" id="navdrop-menu">
+        <a href="index.html">🏠 Home</a>
+        <a href="control.html">🎮 Control</a>
+        <a href="autonomous.html">🧭 Auto</a>
+        <a href="imu.html" class="active">📐 IMU</a>
+        <a href="gps.html">🛰 GPS</a>
+        <a href="keys.html">🔑 Keys/AI</a>
+        <a href="security.html">🛡 Security</a>
+        <a href="system.html">⚙ System</a>
+        <a href="about.html">ℹ About</a>
+      </div>
+    </nav>
+    <div class="topbar-status">
+      <div class="conn-pill offline" id="conn-pill" title="ESP32 connection state">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">🔴 OFFLINE</span>
+      </div>
+      <div class="mode-badge" id="mode-badge">MANUAL</div>
+      <label class="demo-switch" title="Simulate sensors when ESP32 is not reachable">
+        <input type="checkbox" id="demo-toggle" checked />
+        <span class="switch"></span>
+        <span class="demo-label">DEMO</span>
+      </label>
+      <button class="estop-mini js-estop" title="Emergency stop (SPACE)">⛔ STOP</button>
+    </div>
+  </div>
+  <div class="topbar-sub">
+    <div class="sub-item">ESP32 IP: <code id="header-ip">192.168.4.1</code></div>
+    <div class="sub-item">Wi-Fi: <span id="wifi-bars" class="wifi" aria-label="Wi-Fi signal">▂▄▆</span> <span id="wifi-text">--</span></div>
+    <div class="sub-item">MODE: <span id="header-mode">MANUAL</span></div>
+    <div class="sub-item demo-note hidden" id="demo-banner-top">DEMO MODE — SIMULATED DATA</div>
+  </div>
+</header>
+
+<main>
+<section id="imu" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">04</span> IMU &amp; LIVE TELEMETRY</h2>
+    <p>MPU6050 motion • 3D orientation • graphs • tilt safety — <span id="transport-badge" class="badge warn">DEMO</span> <span class="muted">rate: <span id="sample-rate">—</span></span></p>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="panel">
+      <div class="panel-title"><span class="pulse green"></span> SENSOR LINK STATUS</div>
+      <div class="srow"><span>🟢 ESP32</span><strong class="api-conn off" id="fs-esp"><i></i>OFFLINE</strong></div>
+      <div class="srow"><span>🧭 MPU6050</span><strong class="api-conn off" id="fs-mpu"><i></i>NO DATA</strong></div>
+      <div class="srow"><span>🛰 GPS</span><strong class="api-conn off" id="fs-gps"><i></i>SEARCHING</strong></div>
+      <div class="srow"><span>🌡 DHT11</span><strong class="api-conn off" id="fs-dht"><i></i>NO DATA</strong></div>
+      <div class="ip-row">
+        <button id="btn-ws" class="btn btn-primary">⚡ CONNECT WS STREAM</button>
+      </div>
+      <small class="muted">WebSocket <code>ws://&lt;esp-ip&gt;:81/</code> pushes 20–50 Hz. If it fails, HTTP poll continues automatically. Roll/pitch fall back to accelerometer tilt when fusion values are absent.</small>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">🧊 3D ORIENTATION <span class="tag">LIVE</span></div>
+      <div class="cube-stage">
+        <div class="cube" id="cube3d">
+          <div class="face f-top">🤖<span>GUARD-X TOP</span></div>
+          <div class="face f-bottom"><span>L298N</span></div>
+          <div class="face f-front"><span>▲ FRONT</span></div>
+          <div class="face f-back"><span>BACK</span></div>
+          <div class="face f-left"><span>◀ LEFT</span></div>
+          <div class="face f-right"><span>RIGHT ▶</span></div>
+        </div>
+      </div>
+      <div class="rpy">
+        <div><span>↻ ROLL</span><strong id="roll-val">—</strong></div>
+        <div><span>↕ PITCH</span><strong id="pitch-val">—</strong></div>
+        <div><span>⟳ YAW</span><strong id="yaw-val">—</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:14px">
+    <div class="panel">
+      <div class="panel-title">🧭 MPU6050 READINGS</div>
+      <div class="mpu-head">ACCELEROMETER <span class="tag">g</span></div>
+      <div class="gps-rows">
+        <div><span>ACCEL X</span><strong id="iax">—</strong></div>
+        <div><span>ACCEL Y</span><strong id="iay">—</strong></div>
+        <div><span>ACCEL Z</span><strong id="iaz">—</strong></div>
+      </div>
+      <div class="mpu-head">GYROSCOPE <span class="tag">°/s</span></div>
+      <div class="gps-rows">
+        <div><span>GYRO X</span><strong id="igx">—</strong></div>
+        <div><span>GYRO Y</span><strong id="igy">—</strong></div>
+        <div><span>GYRO Z</span><strong id="igz">—</strong></div>
+      </div>
+      <div class="srow"><span>MPU temperature</span><strong id="mpu-temp-val">--</strong></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title danger">⚠️ TILT &amp; CRASH SAFETY</div>
+      <div class="decision" id="tilt-state">✅ LEVEL</div>
+      <div class="srow"><span>Combined tilt</span><strong id="tilt-val">—</strong></div>
+      <label class="lbl">MOTOR SAFETY <span id="motor-safety-val">100%</span></label>
+      <div class="bar"><div class="bar-fill batt" id="motor-safety-bar" style="width:100%"></div></div>
+      <ul class="auto-logic">
+        <li>tilt ≥ 25° → <b>HIGH TILT</b>, motors limited to 50%</li>
+        <li>tilt ≥ 45° → <b>ROLLOVER RISK</b>, automatic <code>/stop</code> on live link</li>
+        <li>impact &gt; 2.5g → <b>CRASH DETECTED</b> event</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <div class="panel-title">📊 LIVE TELEMETRY GRAPHS <span class="tag">120 samples</span></div>
+    <div class="mpu-head">ACCELEROMETER XYZ (g)</div>
+    <canvas class="graph" id="graph-accel" width="600" height="150"></canvas>
+    <div class="mpu-head" style="margin-top:10px">GYROSCOPE XYZ (°/s)</div>
+    <canvas class="graph" id="graph-gyro" width="600" height="150"></canvas>
+    <div class="mpu-head" style="margin-top:10px">ROLL / PITCH (°)</div>
+    <canvas class="graph" id="graph-tilt" width="600" height="150"></canvas>
+    <small class="muted">Graphs redraw on every sample: ~20–50 Hz over WebSocket, once per HTTP poll otherwise.</small>
+  </div>
+</section>
+
+<div class="pager">
+  <a href="autonomous.html">← AUTO</a>
+  <a href="gps.html">GPS →</a>
+</div>
+
+<footer class="footer">
+  <div><strong>GUARD-X</strong> • Autonomous Multi-Sensor Security Rover • ECE Project Demonstration</div>
+  <div class="muted">ESP32 serves / polls JSON • Dashboard: HTML/CSS/Vanilla JS • Map: Leaflet + © OpenStreetMap contributors</div>
+</footer>
+</main>
+
+<nav class="bottom-nav" aria-label="Pages">
+  <div class="bottom-nav-inner">
+    <a class="bnav-item" href="index.html"><span class="ico">🏠</span>HOME</a>
+    <a class="bnav-item" href="control.html"><span class="ico">🎮</span>CONTROL</a>
+    <a class="bnav-item" href="autonomous.html"><span class="ico">🧭</span>AUTO</a>
+    <a class="bnav-item active" href="imu.html"><span class="ico">📐</span>IMU</a>
+    <a class="bnav-item" href="gps.html"><span class="ico">🛰</span>GPS</a>
+    <a class="bnav-item" href="keys.html"><span class="ico">🔑</span>KEYS</a>
+    <a class="bnav-item" href="security.html"><span class="ico">🛡</span>SECURE</a>
+    <a class="bnav-item" href="system.html"><span class="ico">⚙</span>SYSTEM</a>
+    <a class="bnav-item" href="about.html"><span class="ico">ℹ</span>ABOUT</a>
+  </div>
+</nav>
+
+<div id="toast-wrap" aria-live="polite"></div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

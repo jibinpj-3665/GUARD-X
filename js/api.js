@@ -62,6 +62,7 @@ const GuardXState = {
   fence: [],               // [[lat,lon],...] restricted-area boundary
   marking: false,          // true while user taps map to draw fence
   fenceInside: false,      // last known inside/outside state
+  wsLastMsg: 0,            // timestamp of last WebSocket telemetry frame
   lastTelemetry: null      // latest parsed sensor snapshot (for AI analysis)
 };
 
@@ -225,15 +226,27 @@ function emergencyStop() {
 function parseSensorJson(raw) {
   const d = (typeof raw === "string") ? JSON.parse(raw) : (raw || {});
   const num = (v, fb) => (typeof v === "number" && isFinite(v)) ? v : fb;
+  const ax = num(d.accelX, 0), ay = num(d.accelY, 0), az = num(d.accelZ, 0);
+  // Roll/pitch: prefer ESP32 fusion values; else estimate from accelerometer gravity vector
+  let roll = num(d.roll, NaN), pitch = num(d.pitch, NaN);
+  if (!isFinite(roll)) roll = Math.atan2(ay, az) * 180 / Math.PI;
+  if (!isFinite(pitch)) pitch = Math.atan2(-ax, Math.hypot(ay, az)) * 180 / Math.PI;
   return {
     front:       num(d.front, -1),
     left:        num(d.left, -1),
     right:       num(d.right, -1),
     temperature: num(d.temperature, NaN),
     humidity:    num(d.humidity, NaN),
-    accelX:      num(d.accelX, 0),
-    accelY:      num(d.accelY, 0),
-    accelZ:      num(d.accelZ, 0),
+    accelX:      ax,
+    accelY:      ay,
+    accelZ:      az,
+    gyroX:       num(d.gyroX, 0),
+    gyroY:       num(d.gyroY, 0),
+    gyroZ:       num(d.gyroZ, 0),
+    roll:        roll,
+    pitch:       pitch,
+    yaw:         num(d.yaw, NaN),          // needs gyro/mag fusion on ESP32; NaN = unavailable
+    mpuTemp:     num(d.mpuTemp, NaN),
     latitude:    num(d.latitude, NaN),
     longitude:   num(d.longitude, NaN),
     satellites:  Math.max(0, Math.round(num(d.satellites, 0))),
@@ -423,4 +436,53 @@ async function geminiGenerate(model, promptText, key) {
   } finally {
     clearTimeout(t);
   }
+}
+
+// ---- 10. WebSocket live stream (ESP32 pushes 20–50 Hz; HTTP poll is the fallback) ----
+let wsSock = null, wsWanted = false;
+function wsUrl() {
+  const ipInput = document.getElementById("esp-ip");
+  const ip = (ipInput && ipInput.value.trim()) || GUARDX_CONFIG.ESP32_IP || ESP32_IP;
+  return "ws://" + ip + ":81/";
+}
+function wsLive() {
+  return !!(wsSock && wsSock.readyState === 1 && (Date.now() - GuardXState.wsLastMsg < 3000));
+}
+function connectWS() {
+  if (typeof WebSocket === "undefined") { toast("WebSocket not supported here", "err"); return; }
+  disconnectWS(true);
+  wsWanted = true;
+  let s;
+  try {
+    s = new WebSocket(wsUrl());
+  } catch (e) {
+    if (typeof addLog === "function") addLog("WS unavailable — staying on HTTP poll", "warn");
+    return;
+  }
+  wsSock = s;
+  s.onopen = () => {
+    if (typeof addLog === "function") addLog("WS stream open — live IMU @ 20–50 Hz", "ok");
+    if (typeof toast === "function") toast("WS live stream open", "ok");
+    if (typeof updateConnectionUI === "function") updateConnectionUI();
+  };
+  s.onmessage = (ev) => {
+    try {
+      const d = parseSensorJson(JSON.parse(ev.data));
+      d._demo = false;
+      GuardXState.wsLastMsg = Date.now();
+      setOnline(true);
+      if (typeof renderTelemetry === "function") renderTelemetry(d);
+      if (typeof updateConnectionUI === "function") updateConnectionUI();
+    } catch (e) { /* ignore malformed frames */ }
+  };
+  s.onclose = () => {
+    if (wsWanted && typeof addLog === "function") addLog("WS closed — HTTP poll fallback", "warn");
+    if (typeof updateConnectionUI === "function") updateConnectionUI();
+  };
+  s.onerror = () => { /* onclose follows; staying on HTTP poll */ };
+}
+function disconnectWS(silent) {
+  wsWanted = false;
+  if (wsSock) { try { wsSock.close(); } catch (e) { /* ignore */ } wsSock = null; }
+  if (!silent && typeof updateConnectionUI === "function") updateConnectionUI();
 }

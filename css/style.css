@@ -295,6 +295,24 @@ body.alarm .security-panel{border-color:var(--red);box-shadow:0 0 30px rgba(255,
 .ai-output{background:#0a1322;border:1px solid var(--line2);border-radius:12px;padding:12px;font-family:var(--mono);font-size:.78rem;line-height:1.65;white-space:pre-wrap;min-height:130px;max-height:300px;overflow-y:auto;color:var(--txt)}
 .ai-output.loading{border-color:var(--cyan);color:var(--cyan)}
 
+/* ---------- IMU: CSS-3D orientation cube + graphs ---------- */
+.cube-stage{perspective:750px;display:flex;justify-content:center;padding:28px 0;min-height:230px;overflow:hidden}
+.cube{width:150px;height:150px;position:relative;transform-style:preserve-3d;transition:transform .12s linear}
+.face{position:absolute;width:150px;height:150px;border:1px solid var(--cyan);background:rgba(0,229,255,.07);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.7rem;color:var(--txt);font-family:var(--mono);border-radius:10px}
+.face span{font-size:.58rem;letter-spacing:2px;color:var(--cyan);margin-top:6px}
+.f-top{transform:rotateX(90deg) translateZ(75px);background:rgba(0,255,136,.1);border-color:var(--green)}
+.f-top span{color:var(--green)}
+.f-bottom{transform:rotateX(-90deg) translateZ(75px)}
+.f-front{transform:translateZ(75px)}
+.f-back{transform:rotateY(180deg) translateZ(75px)}
+.f-left{transform:rotateY(-90deg) translateZ(75px)}
+.f-right{transform:rotateY(90deg) translateZ(75px)}
+.rpy{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.rpy div{background:#0a1322;border:1px solid var(--line2);border-radius:10px;padding:10px;text-align:center}
+.rpy span{font-size:.62rem;letter-spacing:1px;color:var(--muted);display:block}
+.rpy strong{font-family:var(--mono);font-size:1.15rem;color:var(--cyan)}
+.graph{width:100%;height:auto;border:1px solid var(--line2);border-radius:12px;background:#0a1322;display:block}
+
 /* ---------- mobile bottom nav + header estop ---------- */
 .estop-mini{border:2px solid var(--red);background:linear-gradient(180deg,#5a0f1f,#2a060e);color:#fff;border-radius:10px;font-weight:900;font-size:.72rem;letter-spacing:1px;padding:8px 10px;cursor:pointer;white-space:nowrap}
 .estop-mini:active{transform:scale(.96)}

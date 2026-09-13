@@ -45,10 +45,11 @@
     });
   }
 
-  /* ---------- polling ---------- */
+  /* ---------- polling (skipped while WS streams live frames) ---------- */
   let polling = false;
   async function pollOnce() {
     if (polling) return;
+    if (typeof wsLive === "function" && wsLive()) return; // WS already pushing 20–50 Hz
     polling = true;
     try {
       const data = await fetchSensorData();
@@ -135,11 +136,17 @@
       const ok = await probeConnection();
       addLog(ok ? "ESP32 CONNECTED — live telemetry" : "ESP32 UNREACHABLE — check IP / AP join", ok ? "ok" : "alarm");
       toast(ok ? "ESP32 online" : "ESP32 offline — demo continues", ok ? "ok" : "err");
+      if (ok && typeof connectWS === "function") connectWS(); // upgrade to WS stream when available
       pollOnce();
     });
     on("btn-disconnect", "click", () => {
+      if (typeof disconnectWS === "function") disconnectWS();
       setOnline(false);
       addLog("Link closed by operator", "warn");
+    });
+    on("btn-ws", "click", () => {
+      if (typeof connectWS === "function") connectWS();
+      else toast("WS client unavailable", "err");
     });
     on("btn-poll-now", "click", pollOnce);
     on("esp-ip", "change", updateConnectionUI);

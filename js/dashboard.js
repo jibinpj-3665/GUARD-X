@@ -186,6 +186,16 @@ function renderTelemetry(d) {
   const fm = $("fix-mini");
   if (fm) { fm.textContent = d.gpsFix ? "LOCKED" : "SEARCHING"; fm.style.color = d.gpsFix ? "var(--green)" : "var(--orange)"; }
   setT("sats-mini", d.satellites);
+  // transport badge (WS stream vs HTTP poll vs demo)
+  const tb = $("transport-badge");
+  if (tb) {
+    let t = "DEMO", cls = "badge warn";
+    if (GuardXState.online) {
+      if (typeof wsLive === "function" && wsLive()) { t = "⚡ WS STREAM"; cls = "badge ok"; }
+      else { t = "HTTP POLL"; cls = "badge warn"; }
+    } else if (!GuardXState.demoMode) { t = "NO LINK"; }
+    tb.textContent = t; tb.className = cls;
+  }
   const bz = $("buzzer-val");
   if (bz) { bz.textContent = d.vibration ? "ON" : "OFF"; bz.style.color = d.vibration ? "var(--red)" : "var(--muted)"; }
 
@@ -193,6 +203,8 @@ function renderTelemetry(d) {
   renderOled(d);
   renderDecision(d);
   renderRoverDir(d.direction);
+  renderIMU(d);
+  pushImuSample(d);
   updateMapPosition(d, isDemo);
   const lp = $("last-poll");
   if (lp) lp.textContent = "last poll: " + timestamp() + (isDemo ? " (demo)" : " (live)");
@@ -275,6 +287,134 @@ function renderOled(d) {
   set("oled-dir", d.direction);
 }
 
+/* ---------------- IMU: numbers + 3D orientation + safety ---------------- */
+function fmtDeg(v) { return isFinite(v) ? v.toFixed(1) + "°" : "—"; }
+
+function renderIMU(d) {
+  setT("roll-val", fmtDeg(d.roll));
+  setT("pitch-val", fmtDeg(d.pitch));
+  setT("yaw-val", fmtDeg(d.yaw));
+  setT("tilt-val", Math.hypot(isFinite(d.roll) ? d.roll : 0, isFinite(d.pitch) ? d.pitch : 0).toFixed(1) + "°");
+  setT("iax", d.accelX.toFixed(2) + " g");
+  setT("iay", d.accelY.toFixed(2) + " g");
+  setT("iaz", d.accelZ.toFixed(2) + " g");
+  setT("igx", d.gyroX.toFixed(1) + " °/s");
+  setT("igy", d.gyroY.toFixed(1) + " °/s");
+  setT("igz", d.gyroZ.toFixed(1) + " °/s");
+  setT("mpu-temp-val", isFinite(d.mpuTemp) ? d.mpuTemp.toFixed(1) + " °C" : "--");
+  // CSS-3D rover: no libraries, works offline from the ESP32 AP too
+  const cube = $("cube3d");
+  if (cube) {
+    const r = isFinite(d.roll) ? d.roll : 0;
+    const p = isFinite(d.pitch) ? d.pitch : 0;
+    const y = isFinite(d.yaw) ? d.yaw : 0;
+    cube.style.transform = "rotateX(" + (-p).toFixed(1) + "deg) rotateY(" + y.toFixed(1) + "deg) rotateZ(" + r.toFixed(1) + "deg)";
+  }
+  renderSensorStatus(d);
+  checkImuSafety(d);
+}
+
+function renderSensorStatus(d) {
+  const dot = (id, ok, txt) => {
+    const e = $(id);
+    if (e) { e.innerHTML = "<i></i>" + txt; e.classList.toggle("off", !ok); }
+  };
+  dot("fs-esp", GuardXState.online, GuardXState.online ? "CONNECTED" : "OFFLINE");
+  const mpu = [d.accelX, d.accelY, d.accelZ].every(isFinite);
+  dot("fs-mpu", mpu, mpu ? "CONNECTED" : "NO DATA");
+  dot("fs-gps", !!d.gpsFix, d.gpsFix ? "LOCKED" : "SEARCHING");
+  const dht = isFinite(d.temperature);
+  dot("fs-dht", dht, dht ? "CONNECTED" : "NO DATA");
+}
+
+// Tilt / crash safety: warn → limit motors → auto e-stop on rollover risk
+const TILT_WARN = 25, TILT_CRIT = 45, CRASH_G = 2.5;
+const tiltLatch = { warn: false, crit: false, crashT: 0 };
+function checkImuSafety(d) {
+  const tilt = Math.hypot(isFinite(d.roll) ? d.roll : 0, isFinite(d.pitch) ? d.pitch : 0);
+  const gmag = Math.hypot(d.accelX, d.accelY, d.accelZ);
+  const now = Date.now();
+  if (gmag > CRASH_G && now - tiltLatch.crashT > 8000) {
+    tiltLatch.crashT = now;
+    if (typeof addLog === "function") addLog("💥 CRASH DETECTED (" + gmag.toFixed(1) + "g impact)", "alarm");
+    if (typeof toast === "function") toast("Crash detected!", "err");
+  }
+  const crashing = now - tiltLatch.crashT < 5000;
+  if (tilt >= TILT_CRIT && !tiltLatch.crit) {
+    tiltLatch.crit = true;
+    if (GuardXState.online) {
+      if (typeof addLog === "function") addLog("⚠️ ROLLOVER RISK — automatic emergency stop", "alarm");
+      if (typeof emergencyStop === "function") emergencyStop();
+    } else if (typeof addLog === "function") {
+      addLog("⚠️ ROLLOVER RISK (demo — live rover would auto e-stop)", "alarm");
+    }
+  } else if (tilt < 30) { tiltLatch.crit = false; }
+  if (tilt >= TILT_WARN && !tiltLatch.warn) {
+    tiltLatch.warn = true;
+    if (typeof addLog === "function") addLog("⚠️ HIGH TILT " + tilt.toFixed(0) + "° — motors limited", "warn");
+  } else if (tilt < 20) { tiltLatch.warn = false; }
+  let limit = 100, txt = "✅ LEVEL", cls = "decision";
+  if (tiltLatch.crit || tilt >= TILT_CRIT) { limit = 0; txt = "🔴 ROLLOVER RISK"; cls += " danger"; }
+  else if (tilt >= TILT_WARN) { limit = 50; txt = "🟡 HIGH TILT"; cls += " caution"; }
+  if (crashing) { txt += " • 💥 CRASH"; cls += " danger"; limit = 0; }
+  const badge = $("tilt-state");
+  if (badge) { badge.textContent = txt; badge.className = cls; }
+  const mb = $("motor-safety-bar");
+  if (mb) mb.style.width = limit + "%";
+  setT("motor-safety-val", limit + "%");
+}
+
+/* ---------------- LIVE GRAPHS (dependency-free canvas) ---------------- */
+const IMU_HIST = 120;
+const imuHist = { ax: [], ay: [], az: [], gx: [], gy: [], gz: [], roll: [], pitch: [] };
+let lastSampleT = 0, sampleHz = 0;
+function pushImuSample(d) {
+  const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  if (lastSampleT) {
+    const dt = (now - lastSampleT) / 1000;
+    if (dt > 0.005) sampleHz = sampleHz * 0.8 + (1 / dt) * 0.2;
+  }
+  lastSampleT = now;
+  const push = (k, v) => { const a = imuHist[k]; a.push(v); if (a.length > IMU_HIST) a.shift(); };
+  push("ax", d.accelX); push("ay", d.accelY); push("az", d.accelZ);
+  push("gx", d.gyroX); push("gy", d.gyroY); push("gz", d.gyroZ);
+  push("roll", d.roll); push("pitch", d.pitch);
+  drawGraphs();
+  setT("sample-rate", sampleHz > 1 ? Math.min(99, Math.round(sampleHz)) + " Hz" : "—");
+}
+function drawTrace(cv, series, maxAbs, unit) {
+  if (!cv || !cv.getContext) return;
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  ctx.fillStyle = "#0a1322"; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 1;
+  [0.5, 0.12, 0.88].forEach((f) => { ctx.beginPath(); ctx.moveTo(0, H * f); ctx.lineTo(W, H * f); ctx.stroke(); });
+  ctx.fillStyle = "#8aa0bd"; ctx.font = "11px monospace";
+  ctx.fillText("+" + maxAbs + unit, 5, 13);
+  ctx.fillText("-" + maxAbs + unit, 5, H - 5);
+  let lx = W - 8;
+  series.forEach(([key, label, color]) => {
+    const a = imuHist[key];
+    ctx.strokeStyle = color; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    a.forEach((v, i) => {
+      const x = (i / (IMU_HIST - 1)) * W;
+      const y = H / 2 - (Math.max(-maxAbs, Math.min(maxAbs, v)) / maxAbs) * (H / 2 - 8);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillText(label, lx - ctx.measureText(label).width, 13);
+    lx -= ctx.measureText(label).width + 10;
+  });
+}
+function drawGraphs() {
+  const C = { X: "#00e5ff", Y: "#00ff88", Z: "#ffaa00" };
+  drawTrace($("graph-accel"), [["ax", "X", C.X], ["ay", "Y", C.Y], ["az", "Z", C.Z]], 2, "g");
+  drawTrace($("graph-gyro"), [["gx", "X", C.X], ["gy", "Y", C.Y], ["gz", "Z", C.Z]], 100, "°/s");
+  drawTrace($("graph-tilt"), [["roll", "Roll", C.Y], ["pitch", "Pitch", C.Z]], 90, "°");
+}
+
 /* ---------------- DEMO SIMULATOR ----------------
    Only used when ESP32 is unreachable. Clearly flagged. */
 function resetDemo() {
@@ -311,12 +451,24 @@ function generateDemoSensorData() {
   if (s.t % 45 === 0) s.vibTimer = 3;
   const vib = s.vibTimer > 0;
   if (s.vibTimer > 0) s.vibTimer--;
+  // IMU motion: gentle wander + periodic HIGH-TILT demo event + rare crash blip
+  let roll = 8 * Math.sin(s.t / 9) + (Math.random() - 0.5) * 2;
+  let pitch = 6 * Math.sin(s.t / 13 + 1) + (Math.random() - 0.5) * 2;
+  if (s.t > 10 && (s.t % 70) < 4) { roll += 32; pitch += 8; } // tilt demo → motor limit warning
+  const yaw = (s.t * 3) % 360;
+  let az = 0.95 + Math.random() * 0.08;
+  if (s.t % 97 === 0) az = 2.8; // crash spike demo (1 poll)
   return {
     front: Math.round(s.front), left: Math.round(s.left), right: Math.round(s.right),
     temperature: +s.temp.toFixed(1), humidity: +s.hum.toFixed(0),
-    accelX: +(Math.random() * 0.1 - 0.05).toFixed(2),
-    accelY: +(Math.random() * 0.1 - 0.05).toFixed(2),
-    accelZ: +(0.95 + Math.random() * 0.08).toFixed(2),
+    accelX: +(Math.random() * 0.1 - 0.05 + roll * 0.004).toFixed(2),
+    accelY: +(Math.random() * 0.1 - 0.05 + pitch * 0.004).toFixed(2),
+    accelZ: +az.toFixed(2),
+    gyroX: +((Math.random() - 0.5) * 6).toFixed(1),
+    gyroY: +((Math.random() - 0.5) * 6).toFixed(1),
+    gyroZ: +(3 + (Math.random() - 0.5) * 4).toFixed(1),
+    roll: +roll.toFixed(1), pitch: +pitch.toFixed(1), yaw: +yaw.toFixed(0),
+    mpuTemp: +(32 + Math.sin(s.t / 25) * 1.2).toFixed(1),
     latitude: +s.lat.toFixed(5), longitude: +s.lon.toFixed(5),
     satellites: s.sats, gpsFix: s.fix, vibration: vib,
     battery: Math.max(20, 88 - Math.floor(s.t / 60)),

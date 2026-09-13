@@ -9,6 +9,11 @@ Demo mode is ON by default, so the full UI animates with simulated data when no 
 ## Features
 
 - **Robot control dashboard** — connection state, mode, battery, speed, direction, system status
+- **IMU & telemetry lab** — Roll/Pitch/Yaw, accel/gyro XYZ, MPU temperature, per-sensor link status
+- **Live 3D orientation** — dependency-free CSS-3D rover that tilts/rotates with the MPU6050 (works offline from the ESP32 AP)
+- **Live graphs** — accel / gyro / tilt ring-buffer charts (~20–50 Hz over WebSocket, per-poll over HTTP)
+- **Tilt & crash safety** — HIGH TILT motor limiting, automatic e-stop on rollover risk, impact detection
+- **WebSocket stream** — ESP32 pushes to `ws://<ip>:81/` when available, HTTP poll is the automatic fallback
 - **Manual drive** — D-pad (click + hold-to-drive), speed slider 0–255, emergency STOP, keyboard (`W/A/S/D`, `Space`)
 - **Autonomous patrol** — start/stop, live decision display (path clear / obstacle / turning / intrusion)
 - **Multi-sensor telemetry** — 3x HC-SR04 distances, DHT11 temp/humidity, MPU6050 accel, GPS, vibration
@@ -36,6 +41,7 @@ python -m http.server 8000
 index.html        home: status, sensors, motion + ESP32 connect
 control.html      manual drive, speed, safety
 autonomous.html   auto patrol, surroundings, rover visualization
+imu.html          MPU6050: 3D orientation, graphs, tilt/crash safety, WS stream
 gps.html          GPS map (Leaflet), road route, tile key
 keys.html         optional ORS + Gemini keys, AI analysis
 security.html     intrusion panel, event log, OLED mirror
@@ -64,6 +70,9 @@ All requests use `ESP32_IP` in `js/api.js` (default `192.168.4.1`):
 | Speed 0–255       | `GET /speed?value=150`   |
 | Mode              | `GET /mode?value=auto` or `manual` |
 | Telemetry (poll)  | `GET /status` (JSON below) |
+| Live stream (push)| `ws://<esp-ip>:81/` (JSON frames, same shape — ideal for 20–50 Hz IMU) |
+
+The dashboard tries the WebSocket after CONNECT and falls back to HTTP polling automatically.
 
 Expected `/status` JSON:
 
@@ -72,12 +81,17 @@ Expected `/status` JSON:
   "front": 82, "left": 65, "right": 71,
   "temperature": 28.4, "humidity": 64,
   "accelX": 0.02, "accelY": -0.04, "accelZ": 0.98,
+  "gyroX": 0.5, "gyroY": -0.3, "gyroZ": 1.2,
+  "roll": 2.1, "pitch": -1.2, "yaw": 87.5, "mpuTemp": 32.4,
   "latitude": 10.52, "longitude": 76.21,
   "satellites": 7, "gpsFix": true,
   "vibration": false, "battery": 82,
   "mode": "MANUAL", "speed": 180, "direction": "STOP"
 }
 ```
+
+`roll`/`pitch` are optional — the dashboard estimates tilt from the accelerometer
+when fusion values are absent. `yaw` needs gyro/mag fusion (shows — otherwise).
 
 ## Optional API keys (bring your own)
 
