@@ -209,6 +209,9 @@ kbd{background:#0a1322;border:1px solid var(--line);border-bottom-width:2px;bord
 .key-title{font-size:.72rem;letter-spacing:2px}
 #gps-map{height:380px;border-radius:12px;border:1px solid var(--line2);background:#0a1322;z-index:1}
 .map-foot{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-top:8px;flex-wrap:wrap;gap:6px}
+.loc-search-row{display:flex;gap:8px;margin-bottom:4px}
+.loc-search-row input{flex:1}
+#loc-result{font-family:var(--mono);font-size:.75rem}
 .leaflet-container{font-family:inherit}
 .rover-marker{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:#0a1426;border:2px solid var(--green);box-shadow:0 0 14px rgba(0,255,136,.6)}
 .rover-marker.searching{border-color:var(--orange);box-shadow:0 0 14px rgba(255,170,0,.6)}

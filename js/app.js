@@ -261,6 +261,14 @@
       }
     });
 
+    // ---- Location search ----
+    const doSearch = () => {
+      const inp = get("loc-search");
+      if (typeof searchLocation === "function") searchLocation(inp ? inp.value : "");
+    };
+    on("btn-loc-search", "click", doSearch);
+    on("loc-search", "keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); doSearch(); } });
+
     // ---- Restricted area / geofence ----
     on("btn-fence-mark", "click", () => {
       if (typeof startFenceMarking === "function") startFenceMarking();

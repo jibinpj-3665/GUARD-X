@@ -8,7 +8,7 @@ const $ = (id) => document.getElementById(id);
 function setT(id, v) { const e = $(id); if (e) e.textContent = v; }
 function setW(id, p) { const e = $(id); if (e) e.style.width = p; }
 let map = null, roverMarker = null, routeLine = null, roadLine = null;
-let fenceLine = null, fencePoly = null, lastGps = null;
+let fenceLine = null, fencePoly = null, searchMarker = null, lastGps = null;
 let demoState = null;
 const LS_FENCE = "guardx_fence";   // restricted area persists in this browser
 const SS_ROUTE = "guardx_route";   // movement trail persists per tab across pages
@@ -487,6 +487,39 @@ function clearStoredRoute() {
   try { sessionStorage.removeItem(SS_ROUTE); } catch (e) { /* ignore */ }
   GuardXState.distM = 0;
   setT("gps-dist", "0 m");
+}
+
+/* ---------------- LOCATION SEARCH (Nominatim, no key) ---------------- */
+async function searchLocation(query) {
+  const q = (query || "").trim();
+  if (!q) { toast("Type a place name first", "err"); return; }
+  const resEl = $("loc-result");
+  if (resEl) { resEl.classList.remove("hidden"); resEl.textContent = "Searching…"; }
+  try {
+    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=0&q=" + encodeURIComponent(q);
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error("search HTTP " + res.status);
+    const list = await res.json();
+    if (!list || !list.length) throw new Error("no results for '" + q + "'");
+    const hit = list[0];
+    const lat = parseFloat(hit.lat), lon = parseFloat(hit.lon);
+    const short = String(hit.display_name || q).split(",").slice(0, 3).join(",");
+    if (map && typeof L !== "undefined") {
+      if (searchMarker) map.removeLayer(searchMarker);
+      searchMarker = L.marker([lat, lon]).addTo(map).bindPopup("📍 " + short).openPopup();
+      map.setView([lat, lon], 17);
+    }
+    // stop auto-follow yanking the view back to the rover while marking elsewhere
+    GuardXState.followMap = false;
+    const ft = $("follow-toggle");
+    if (ft) ft.checked = false;
+    if (resEl) resEl.textContent = "📍 " + short;
+    if (typeof addLog === "function") addLog("Map jumped to: " + q, "ok");
+    toast("Found " + q + " — auto-follow off, mark your area", "ok");
+  } catch (e) {
+    if (resEl) resEl.textContent = "Search failed: " + e.message;
+    toast("Search: " + e.message, "err");
+  }
 }
 
 /* ---------------- RESTRICTED AREA / GEOFENCE ---------------- */
