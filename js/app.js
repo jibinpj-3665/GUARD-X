@@ -267,7 +267,27 @@
       if (typeof searchLocation === "function") searchLocation(inp ? inp.value : "");
     };
     on("btn-loc-search", "click", doSearch);
-    on("loc-search", "keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); doSearch(); } });
+    on("loc-search", "input", (e) => {
+      if (suggestTimer) clearTimeout(suggestTimer);
+      const v = e.target.value;
+      suggestTimer = setTimeout(() => {
+        if (typeof fetchSuggestions === "function") fetchSuggestions(v);
+      }, 450); // stay under Nominatim's 1 req/sec policy
+    });
+    on("loc-search", "keydown", (e) => {
+      if (e.key === "ArrowDown" && typeof moveSuggestion === "function" && moveSuggestion(1)) { e.preventDefault(); }
+      else if (e.key === "ArrowUp" && typeof moveSuggestion === "function" && moveSuggestion(-1)) { e.preventDefault(); }
+      else if (e.key === "Enter") {
+        e.preventDefault();
+        if (typeof suggestionsOpen === "function" && suggestionsOpen()) pickSuggestion(suggestSel >= 0 ? suggestSel : 0);
+        else doSearch();
+      }
+      else if (e.key === "Escape" && typeof closeSuggestions === "function") closeSuggestions();
+    });
+    on("loc-search", "blur", () => {
+      // delay so tap/click on a suggestion registers first (mousedown handles it too)
+      setTimeout(() => { if (typeof closeSuggestions === "function") closeSuggestions(); }, 250);
+    });
 
     // ---- Restricted area / geofence ----
     on("btn-fence-mark", "click", () => {

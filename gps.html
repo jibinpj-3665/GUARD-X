@@ -117,9 +117,12 @@
     </div>
     <div class="panel map-panel">
       <div class="panel-title">LIVE MAP <span class="tag" id="map-src-tag">OSM • NO KEY</span></div>
-      <div class="loc-search-row">
-        <input id="loc-search" type="text" placeholder="🔍 Search location — e.g. Thrissur, Kochi…" autocomplete="off" />
-        <button id="btn-loc-search" class="btn btn-primary">SEARCH</button>
+      <div class="loc-search-wrap">
+        <div class="loc-search-row">
+          <input id="loc-search" type="text" placeholder="🔍 Search location — e.g. Thrissur, Kochi…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="loc-suggest" />
+          <button id="btn-loc-search" class="btn btn-primary">SEARCH</button>
+        </div>
+        <ul id="loc-suggest" class="suggest hidden" role="listbox" aria-label="Matching places"></ul>
       </div>
       <div class="muted hidden" id="loc-result" style="margin:6px 0"></div>
       <div id="gps-map" aria-label="GUARD-X GPS map"></div>

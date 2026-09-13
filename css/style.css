@@ -211,6 +211,11 @@ kbd{background:#0a1322;border:1px solid var(--line);border-bottom-width:2px;bord
 .map-foot{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-top:8px;flex-wrap:wrap;gap:6px}
 .loc-search-row{display:flex;gap:8px;margin-bottom:4px}
 .loc-search-row input{flex:1}
+.loc-search-wrap{position:relative}
+.suggest{position:absolute;top:100%;left:0;right:0;z-index:80;list-style:none;margin:4px 0 0;padding:6px;background:rgba(8,13,24,.97);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55);max-height:240px;overflow-y:auto}
+.suggest li{padding:10px 12px;border-radius:9px;font-family:var(--mono);font-size:.76rem;cursor:pointer;color:var(--txt)}
+.suggest li small{display:block;color:var(--muted);font-size:.68rem;margin-top:2px}
+.suggest li:hover,.suggest li.sel{background:rgba(0,229,255,.14);color:var(--cyan)}
 #loc-result{font-family:var(--mono);font-size:.75rem}
 .leaflet-container{font-family:inherit}
 .rover-marker{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:#0a1426;border:2px solid var(--green);box-shadow:0 0 14px rgba(0,255,136,.6)}

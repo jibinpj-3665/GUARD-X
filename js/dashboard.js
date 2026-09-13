@@ -490,9 +490,28 @@ function clearStoredRoute() {
 }
 
 /* ---------------- LOCATION SEARCH (Nominatim, no key) ---------------- */
+let suggestCtrl = null, suggestTimer = null, suggestItems = [], suggestSel = -1;
+
+function flyToPlace(lat, lon, label, query) {
+  const short = String(label || query || "").split(",").slice(0, 3).join(",");
+  if (map && typeof L !== "undefined" && isFinite(lat) && isFinite(lon)) {
+    if (searchMarker) map.removeLayer(searchMarker);
+    searchMarker = L.marker([lat, lon]).addTo(map).bindPopup("📍 " + short).openPopup();
+    map.setView([lat, lon], 17);
+  }
+  // stop auto-follow yanking the view back to the rover while marking elsewhere
+  GuardXState.followMap = false;
+  const ft = $("follow-toggle");
+  if (ft) ft.checked = false;
+  const resEl = $("loc-result");
+  if (resEl) { resEl.classList.remove("hidden"); resEl.textContent = "📍 " + short; }
+  if (typeof addLog === "function") addLog("Map jumped to: " + (query || short), "ok");
+}
+
 async function searchLocation(query) {
   const q = (query || "").trim();
   if (!q) { toast("Type a place name first", "err"); return; }
+  closeSuggestions();
   const resEl = $("loc-result");
   if (resEl) { resEl.classList.remove("hidden"); resEl.textContent = "Searching…"; }
   try {
@@ -502,24 +521,80 @@ async function searchLocation(query) {
     const list = await res.json();
     if (!list || !list.length) throw new Error("no results for '" + q + "'");
     const hit = list[0];
-    const lat = parseFloat(hit.lat), lon = parseFloat(hit.lon);
-    const short = String(hit.display_name || q).split(",").slice(0, 3).join(",");
-    if (map && typeof L !== "undefined") {
-      if (searchMarker) map.removeLayer(searchMarker);
-      searchMarker = L.marker([lat, lon]).addTo(map).bindPopup("📍 " + short).openPopup();
-      map.setView([lat, lon], 17);
-    }
-    // stop auto-follow yanking the view back to the rover while marking elsewhere
-    GuardXState.followMap = false;
-    const ft = $("follow-toggle");
-    if (ft) ft.checked = false;
-    if (resEl) resEl.textContent = "📍 " + short;
-    if (typeof addLog === "function") addLog("Map jumped to: " + q, "ok");
+    flyToPlace(parseFloat(hit.lat), parseFloat(hit.lon), hit.display_name, q);
     toast("Found " + q + " — auto-follow off, mark your area", "ok");
   } catch (e) {
     if (resEl) resEl.textContent = "Search failed: " + e.message;
     toast("Search: " + e.message, "err");
   }
+}
+
+async function fetchSuggestions(q) {
+  q = (q || "").trim();
+  const box = $("loc-suggest");
+  if (q.length < 3) { closeSuggestions(); return; }
+  if (suggestCtrl) suggestCtrl.abort();
+  suggestCtrl = new AbortController();
+  try {
+    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=0&q=" + encodeURIComponent(q);
+    const res = await fetch(url, { signal: suggestCtrl.signal, headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    suggestItems = (await res.json()) || [];
+    suggestSel = -1;
+    renderSuggestions();
+  } catch (e) {
+    if (e && e.name === "AbortError") return; // superseded by newer keystroke
+    closeSuggestions();
+  }
+}
+function renderSuggestions() {
+  const box = $("loc-suggest"), inp = $("loc-search");
+  if (!box) return;
+  if (!suggestItems.length) { closeSuggestions(); return; }
+  box.innerHTML = "";
+  suggestItems.forEach((hit, i) => {
+    const li = document.createElement("li");
+    li.setAttribute("role", "option");
+    const parts = String(hit.display_name || "").split(",");
+    const main = document.createElement("div");
+    main.textContent = parts.slice(0, 2).join(",");
+    const sub = document.createElement("small");
+    sub.textContent = parts.slice(2, 5).join(",");
+    li.appendChild(main); li.appendChild(sub);
+    if (i === suggestSel) li.classList.add("sel");
+    li.addEventListener("mousedown", (e) => { e.preventDefault(); pickSuggestion(i); });
+    box.appendChild(li);
+  });
+  box.classList.remove("hidden");
+  if (inp) inp.setAttribute("aria-expanded", "true");
+}
+function moveSuggestion(dir) {
+  if (!suggestItems.length) return false;
+  suggestSel = (suggestSel + dir + suggestItems.length) % suggestItems.length;
+  renderSuggestions();
+  const box = $("loc-suggest");
+  const sel = box && box.children[suggestSel];
+  if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: "nearest" });
+  return true;
+}
+function pickSuggestion(i) {
+  const hit = suggestItems[i];
+  closeSuggestions();
+  if (!hit) return;
+  const inp = $("loc-search");
+  if (inp) inp.value = String(hit.display_name || "").split(",").slice(0, 2).join(",");
+  flyToPlace(parseFloat(hit.lat), parseFloat(hit.lon), hit.display_name, inp ? inp.value : "");
+  toast("Pinned — auto-follow off, mark your area", "ok");
+}
+function closeSuggestions() {
+  suggestItems = []; suggestSel = -1;
+  const box = $("loc-suggest"), inp = $("loc-search");
+  if (box) { box.classList.add("hidden"); box.innerHTML = ""; }
+  if (inp) inp.setAttribute("aria-expanded", "false");
+}
+function suggestionsOpen() {
+  const box = $("loc-suggest");
+  return !!(box && !box.classList.contains("hidden") && suggestItems.length);
 }
 
 /* ---------------- RESTRICTED AREA / GEOFENCE ---------------- */
