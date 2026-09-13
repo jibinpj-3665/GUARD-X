@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>GUARD-X | Dashboard</title>
-<meta name="description" content="GUARD-X live robot status and sensor telemetry." />
+<title>GUARD-X | Robot Control</title>
+<meta name="description" content="GUARD-X manual drive control, speed and safety." />
 <link rel="stylesheet" href="css/style.css" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
 </head>
-<body data-page="home">
+<body data-page="control">
 <div class="bg-grid" aria-hidden="true"></div>
 <div class="bg-glow" aria-hidden="true"></div>
 
@@ -31,8 +31,8 @@
       </div>
     </div>
     <nav class="topnav" aria-label="Pages">
-      <a href="index.html" class="active">Home</a>
-      <a href="control.html">Control</a>
+      <a href="index.html">Home</a>
+      <a href="control.html" class="active">Control</a>
       <a href="autonomous.html">Auto</a>
       <a href="gps.html">GPS</a>
       <a href="keys.html">Keys/AI</a>
@@ -87,80 +87,57 @@
   </div>
 </section>
 
-<section id="dashboard" class="section">
+<section id="control" class="section">
   <div class="section-head">
-    <h2><span class="h-num">01</span> COMMAND DASHBOARD</h2>
-    <p>Live robot state • sensor telemetry • system health</p>
+    <h2><span class="h-num">02</span> ROBOT CONTROL</h2>
+    <p>Manual drive • speed • safety — sends HTTP requests to ESP32</p>
   </div>
-
-  <div class="grid grid-3">
-    <div class="panel status-panel">
-      <div class="panel-title"><span class="pulse"></span> ROBOT STATUS</div>
-      <div class="status-rows">
-        <div class="srow"><span>Connection</span><strong id="st-connection" class="bad">OFFLINE</strong></div>
-        <div class="srow"><span>Mode</span><strong id="st-mode">MANUAL</strong></div>
-        <div class="srow"><span>Direction</span><strong id="st-direction">STOP</strong></div>
-        <div class="srow"><span>Speed</span><strong id="st-speed">0 / 255 (0%)</strong></div>
-        <div class="srow"><span>System</span><strong id="st-system" class="ok">NOMINAL</strong></div>
+  <div class="grid grid-2">
+    <div class="panel control-panel">
+      <div class="panel-title">DRIVE MODE</div>
+      <div class="seg">
+        <button id="mode-manual" class="seg-btn active">MANUAL</button>
+        <button id="mode-auto" class="seg-btn">AUTONOMOUS</button>
       </div>
-      <label class="lbl">BATTERY <span id="battery-val">82%</span></label>
-      <div class="bar"><div class="bar-fill batt" id="battery-bar" style="width:82%"></div></div>
-      <label class="lbl">SPEED <span id="speed-val2">0%</span></label>
-      <div class="bar"><div class="bar-fill speed" id="speed-bar" style="width:0%"></div></div>
-      <div class="sys-line" id="sys-line">Awaiting telemetry…</div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-title"><span class="pulse cyan"></span> ULTRASONIC ARRAY <span class="tag">HC-SR04 ×3</span></div>
-      <div class="dist-grid">
-        <div class="dist" id="card-front">
-          <div class="dist-label">FRONT</div>
-          <div class="dist-val"><span id="front-val">--</span><small>cm</small></div>
-          <div class="bar small"><div class="bar-fill" id="front-bar" style="width:0%"></div></div>
-          <div class="dist-state" id="front-state">—</div>
+      <div class="dpad-wrap">
+        <div class="dpad">
+          <span></span>
+          <button class="dbtn up" data-cmd="forward" aria-label="Forward">▲<small>FORWARD</small></button>
+          <span></span>
+          <button class="dbtn left" data-cmd="left" aria-label="Left">◀<small>LEFT</small></button>
+          <button class="dbtn stop" data-cmd="stop" aria-label="Stop">■<small>STOP</small></button>
+          <button class="dbtn right" data-cmd="right" aria-label="Right">▶<small>RIGHT</small></button>
+          <span></span>
+          <button class="dbtn down" data-cmd="backward" aria-label="Reverse">▼<small>REVERSE</small></button>
+          <span></span>
         </div>
-        <div class="dist" id="card-left">
-          <div class="dist-label">LEFT</div>
-          <div class="dist-val"><span id="left-val">--</span><small>cm</small></div>
-          <div class="bar small"><div class="bar-fill" id="left-bar" style="width:0%"></div></div>
-          <div class="dist-state" id="left-state">—</div>
+        <div class="drive-side">
+          <label class="lbl">SPEED <span id="speed-pct">0%</span></label>
+          <input type="range" id="speed-slider" min="0" max="255" value="150" />
+          <div class="speed-num"><span id="speed-num">150</span><small>/255</small></div>
+          <button id="btn-speed-apply" class="btn btn-primary btn-block">SET SPEED</button>
+          <div class="endpoints-hint">GET <code>/forward /backward /left /right /stop</code><br/>GET <code>/speed?value=150</code> <code>/mode?value=auto</code></div>
         </div>
-        <div class="dist" id="card-right">
-          <div class="dist-label">RIGHT</div>
-          <div class="dist-val"><span id="right-val">--</span><small>cm</small></div>
-          <div class="bar small"><div class="bar-fill" id="right-bar" style="width:0%"></div></div>
-          <div class="dist-state" id="right-state">—</div>
-        </div>
-      </div>
-      <div class="env-grid">
-        <div class="env"><span>TEMP</span><strong><span id="temp-val">--</span> °C</strong></div>
-        <div class="env"><span>HUMIDITY</span><strong><span id="hum-val">--</span> %</strong></div>
-        <div class="env"><span>VIBRATION</span><strong id="vib-val">NORMAL</strong></div>
-        <div class="env"><span>BUZZER</span><strong id="buzzer-val">OFF</strong></div>
       </div>
     </div>
-
-    <div class="panel">
-      <div class="panel-title"><span class="pulse green"></span> MOTION &amp; POSITION</div>
-      <div class="mpu">
-        <div class="mpu-head">MPU6050 ACCELEROMETER <span class="tag">g</span></div>
-        <div class="accel-row"><span>X</span><div class="bar small"><div class="bar-fill accel" id="accx-bar" style="width:50%"></div></div><code id="accx-val">0.00</code></div>
-        <div class="accel-row"><span>Y</span><div class="bar small"><div class="bar-fill accel" id="accy-bar" style="width:50%"></div></div><code id="accy-val">0.00</code></div>
-        <div class="accel-row"><span>Z</span><div class="bar small"><div class="bar-fill accel" id="accz-bar" style="width:50%"></div></div><code id="accz-val">0.00</code></div>
+    <div class="panel safety-panel">
+      <div class="panel-title danger">SAFETY</div>
+      <button id="btn-emergency" class="emergency">⛔ EMERGENCY STOP<small>PRESS SPACE • SENDS /stop</small></button>
+      <div class="safety-rows">
+        <div class="srow"><span>Link guard</span><strong id="link-guard">ARMED</strong></div>
+        <div class="srow"><span>Last command</span><strong id="last-cmd">—</strong></div>
+        <div class="srow"><span>Last ack</span><strong id="last-ack">—</strong></div>
       </div>
-      <div class="gps-mini">
-        <div><span>LAT</span><code id="lat-mini">—</code></div>
-        <div><span>LON</span><code id="lon-mini">—</code></div>
-        <div><span>FIX</span><strong id="fix-mini">SEARCHING</strong></div>
-        <div><span>SATS</span><strong id="sats-mini">0</strong></div>
-      </div>
-      <div class="demo-note hidden" id="demo-note">DEMO MODE — SIMULATED DATA</div>
+      <p class="muted">If the ESP32 link is lost: status flips to <b>OFFLINE</b>, movement commands are blocked, and a warning is logged. Demo mode keeps the UI usable for presentation.</p>
+      <div class="srow"><span>Direction</span><strong id="st-direction">STOP</strong></div>
+      <div class="srow"><span>Mode</span><strong id="st-mode">MANUAL</strong></div>
     </div>
   </div>
 </section>
 
 <div class="pager">
-  <a href="control.html">CONTROL →</a>
+  <a href="index.html">← HOME</a>
+  <a href="autonomous.html">AUTO →</a>
 </div>
 
 <footer class="footer">
@@ -171,8 +148,8 @@
 
 <nav class="bottom-nav" aria-label="Pages">
   <div class="bottom-nav-inner">
-    <a class="bnav-item active" href="index.html"><span class="ico">🏠</span>HOME</a>
-    <a class="bnav-item" href="control.html"><span class="ico">🎮</span>CONTROL</a>
+    <a class="bnav-item" href="index.html"><span class="ico">🏠</span>HOME</a>
+    <a class="bnav-item active" href="control.html"><span class="ico">🎮</span>CONTROL</a>
     <a class="bnav-item" href="autonomous.html"><span class="ico">🧭</span>AUTO</a>
     <a class="bnav-item" href="gps.html"><span class="ico">🛰</span>GPS</a>
     <a class="bnav-item" href="keys.html"><span class="ico">🔑</span>KEYS</a>

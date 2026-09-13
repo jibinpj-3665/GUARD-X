@@ -4,6 +4,9 @@
    ============================================================ */
 
 const $ = (id) => document.getElementById(id);
+// Safe DOM helpers — every page only contains some panels, so missing IDs are normal.
+function setT(id, v) { const e = $(id); if (e) e.textContent = v; }
+function setW(id, p) { const e = $(id); if (e) e.style.width = p; }
 let map = null, roverMarker = null, routeLine = null, roadLine = null, lastGps = null;
 let demoState = null;
 
@@ -115,14 +118,13 @@ function renderTelemetry(d) {
   GuardXState.direction = d.direction || GuardXState.direction;
   GuardXState.speed = d.speed;
   const pct = Math.round((d.speed / 255) * 100);
-  $("st-direction").textContent = d.direction;
-  $("st-speed").textContent = d.speed + " / 255 (" + pct + "%)";
-  $("speed-bar").style.width = pct + "%";
-  $("speed-val2").textContent = pct + "%";
-  $("battery-val").textContent = d.battery + "%";
+  setT("st-direction", d.direction);
+  setT("st-speed", d.speed + " / 255 (" + pct + "%)");
+  setW("speed-bar", pct + "%");
+  setT("speed-val2", pct + "%");
+  setT("battery-val", d.battery + "%");
   const bb = $("battery-bar");
-  bb.style.width = d.battery + "%";
-  bb.classList.toggle("low", d.battery < 25);
+  if (bb) { bb.style.width = d.battery + "%"; bb.classList.toggle("low", d.battery < 25); }
   const sys = $("st-system"), sl = $("sys-line");
   if (d.vibration) { sys.textContent = "INTRUSION"; sys.className = "bad"; }
   else if (d.front >= 0 && d.front < 25) { sys.textContent = "AVOIDING"; sys.className = "warn"; }
@@ -159,8 +161,8 @@ function renderTelemetry(d) {
   fov("fov-front", d.front); fov("fov-left", d.left); fov("fov-right", d.right);
 
   // env
-  $("temp-val").textContent = isFinite(d.temperature) ? d.temperature.toFixed(1) : "--";
-  $("hum-val").textContent = isFinite(d.humidity) ? Math.round(d.humidity) : "--";
+  setT("temp-val", isFinite(d.temperature) ? d.temperature.toFixed(1) : "--");
+  setT("hum-val", isFinite(d.humidity) ? Math.round(d.humidity) : "--");
   const vib = $("vib-val");
   if (vib) {
     vib.textContent = d.vibration ? "INTRUSION" : "NORMAL";
@@ -169,18 +171,18 @@ function renderTelemetry(d) {
 
   // accel (-2g..2g → 0..100%)
   const acc = (id, v) => {
-    const el = $(id + "-val"), bar = $(id + "-bar");
-    if (el) el.textContent = v.toFixed(2);
-    if (bar) bar.style.width = Math.max(0, Math.min(100, ((v + 2) / 4) * 100)) + "%";
+    const e2 = $(id + "-val"), bar2 = $(id + "-bar");
+    if (e2) e2.textContent = v.toFixed(2);
+    if (bar2) bar2.style.width = Math.max(0, Math.min(100, ((v + 2) / 4) * 100)) + "%";
   };
   acc("accx", d.accelX); acc("accy", d.accelY); acc("accz", d.accelZ);
 
   // gps mini + panel
-  $("lat-mini").textContent = fmtCoord(d.latitude);
-  $("lon-mini").textContent = fmtCoord(d.longitude);
-  $("fix-mini").textContent = d.gpsFix ? "LOCKED" : "SEARCHING";
-  $("fix-mini").style.color = d.gpsFix ? "var(--green)" : "var(--orange)";
-  $("sats-mini").textContent = d.satellites;
+  setT("lat-mini", fmtCoord(d.latitude));
+  setT("lon-mini", fmtCoord(d.longitude));
+  const fm = $("fix-mini");
+  if (fm) { fm.textContent = d.gpsFix ? "LOCKED" : "SEARCHING"; fm.style.color = d.gpsFix ? "var(--green)" : "var(--orange)"; }
+  setT("sats-mini", d.satellites);
   const bz = $("buzzer-val");
   if (bz) { bz.textContent = d.vibration ? "ON" : "OFF"; bz.style.color = d.vibration ? "var(--red)" : "var(--muted)"; }
 
@@ -339,14 +341,14 @@ function initMap() {
   roverMarker = L.marker([10.5276, 76.2144], { icon }).addTo(map).bindPopup("GUARD-X");
   routeLine = L.polyline([], { color: "#00e5ff", weight: 3, opacity: 0.9 }).addTo(map);
   roadLine = L.polyline([], { color: "#ffaa00", weight: 4, opacity: 0.95, dashArray: "8 6" }).addTo(map);
-  $("map-src-tag").textContent = tileUrl.includes("openstreetmap") ? "OSM • NO KEY" : "CUSTOM SOURCE";
+  setT("map-src-tag", tileUrl.includes("openstreetmap") ? "OSM • NO KEY" : "CUSTOM SOURCE");
 }
 
 function refreshMapSource() {
   if (!map || typeof L === "undefined") { initMap(); return; }
   const url = getMapTileUrl();
-  map._tileLayer.setUrl(url);
-  $("map-src-tag").textContent = url.includes("openstreetmap") ? "OSM • NO KEY" : "CUSTOM SOURCE";
+  if (map && map._tileLayer) map._tileLayer.setUrl(url);
+  setT("map-src-tag", url.includes("openstreetmap") ? "OSM • NO KEY" : "CUSTOM SOURCE");
   toast("Map source updated", "ok");
 }
 
@@ -360,10 +362,10 @@ function computeHeading(a, b) {
 }
 
 function updateMapPosition(d, isDemo) {
-  $("gps-lat").textContent = fmtCoord(d.latitude) + (isDemo && isFinite(d.latitude) ? " (demo)" : "");
-  $("gps-lon").textContent = fmtCoord(d.longitude) + (isDemo && isFinite(d.longitude) ? " (demo)" : "");
-  $("gps-sats").textContent = d.satellites;
-  $("map-coords").textContent = fmtCoord(d.latitude) + ", " + fmtCoord(d.longitude);
+  setT("gps-lat", fmtCoord(d.latitude) + (isDemo && isFinite(d.latitude) ? " (demo)" : ""));
+  setT("gps-lon", fmtCoord(d.longitude) + (isDemo && isFinite(d.longitude) ? " (demo)" : ""));
+  setT("gps-sats", d.satellites);
+  setT("map-coords", fmtCoord(d.latitude) + ", " + fmtCoord(d.longitude));
   const badge = $("gps-fix-badge");
   if (badge) {
     badge.textContent = d.gpsFix ? "GPS LOCKED" : "GPS SEARCHING";
@@ -383,15 +385,15 @@ function updateMapPosition(d, isDemo) {
   // heading: prefer ESP32 heading, else compute from last fix
   let h = d.heading;
   if (!isFinite(h) && lastGps) h = computeHeading(lastGps, pos);
-  $("gps-heading").textContent = isFinite(h) ? Math.round(h) + "°" : d.direction || "—";
+  setT("gps-heading", isFinite(h) ? Math.round(h) + "°" : d.direction || "—");
   lastGps = pos;
   // append to route (ignore duplicates / tiny jitter < ~2m)
   const r = GuardXState.route;
   const last = r[r.length - 1];
   if (!last || Math.abs(last[0] - pos[0]) > 0.00002 || Math.abs(last[1] - pos[1]) > 0.00002) {
     r.push(pos);
-    routeLine.setLatLngs(r);
-    $("gps-points").textContent = r.length;
+    if (routeLine) routeLine.setLatLngs(r);
+    setT("gps-points", r.length);
   }
   roverMarker.bindPopup("GUARD-X<br>" + pos[0].toFixed(5) + ", " + pos[1].toFixed(5) + (isDemo ? "<br>DEMO DATA" : ""));
   if (GuardXState.followMap) map.setView(pos, Math.max(map.getZoom(), 16), { animate: true });

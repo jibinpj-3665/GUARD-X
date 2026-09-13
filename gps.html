@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GUARD-X | GPS Tracking</title>
+<meta name="description" content="GUARD-X live GPS tracking with Leaflet and OpenStreetMap." />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
+</head>
+<body data-page="gps">
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="40" height="40">
+          <rect x="6" y="14" width="36" height="20" rx="5" fill="none" stroke="#00e5ff" stroke-width="2.5"/>
+          <circle cx="14" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="34" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="24" cy="24" r="5" fill="none" stroke="#00ff88" stroke-width="2"/>
+          <circle cx="24" cy="24" r="1.8" fill="#00ff88"/>
+          <path d="M24 6v8M14 10l4 5M34 10l-4 5" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">GUARD<span>-X</span></div>
+        <div class="brand-sub">AUTONOMOUS SECURITY ROVER</div>
+      </div>
+    </div>
+    <nav class="topnav" aria-label="Pages">
+      <a href="index.html">Home</a>
+      <a href="control.html">Control</a>
+      <a href="autonomous.html">Auto</a>
+      <a href="gps.html" class="active">GPS</a>
+      <a href="keys.html">Keys/AI</a>
+      <a href="security.html">Security</a>
+      <a href="system.html">System</a>
+      <a href="about.html">About</a>
+    </nav>
+    <div class="topbar-status">
+      <div class="conn-pill offline" id="conn-pill" title="ESP32 connection state">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">🔴 OFFLINE</span>
+      </div>
+      <div class="mode-badge" id="mode-badge">MANUAL</div>
+      <label class="demo-switch" title="Simulate sensors when ESP32 is not reachable">
+        <input type="checkbox" id="demo-toggle" checked />
+        <span class="switch"></span>
+        <span class="demo-label">DEMO</span>
+      </label>
+      <button class="estop-mini js-estop" title="Emergency stop (SPACE)">⛔ STOP</button>
+    </div>
+  </div>
+  <div class="topbar-sub">
+    <div class="sub-item">ESP32 IP: <code id="header-ip">192.168.4.1</code></div>
+    <div class="sub-item">Wi-Fi: <span id="wifi-bars" class="wifi" aria-label="Wi-Fi signal">▂▄▆</span> <span id="wifi-text">--</span></div>
+    <div class="sub-item">MODE: <span id="header-mode">MANUAL</span></div>
+    <div class="sub-item demo-note hidden" id="demo-banner-top">DEMO MODE — SIMULATED DATA</div>
+  </div>
+</header>
+
+<main>
+<section id="gps" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">04</span> GPS TRACKING</h2>
+    <p>Leaflet + OpenStreetMap • live rover marker • travelled path</p>
+  </div>
+  <div class="grid grid-gps">
+    <div class="panel gps-info">
+      <div class="panel-title">POSITION <span id="gps-fix-badge" class="badge warn">GPS SEARCHING</span></div>
+      <div class="gps-rows">
+        <div><span>LATITUDE</span><code id="gps-lat">—</code></div>
+        <div><span>LONGITUDE</span><code id="gps-lon">—</code></div>
+        <div><span>SATELLITES</span><strong id="gps-sats">0</strong></div>
+        <div><span>HEADING</span><strong id="gps-heading">—</strong></div>
+        <div><span>POINTS</span><strong id="gps-points">0</strong></div>
+      </div>
+      <div class="gps-btns">
+        <button id="btn-center" class="btn btn-primary">◎ CENTER ON ROVER</button>
+        <button id="btn-clear-route" class="btn btn-ghost">CLEAR ROUTE</button>
+        <button id="btn-road-route" class="btn btn-ghost" title="Snap travelled path to real roads via OpenRouteService">🛣 ROAD ROUTE</button>
+        <label class="follow"><input type="checkbox" id="follow-toggle" checked /> auto-follow</label>
+      </div>
+      <div class="road-status muted" id="ors-road-status">Road geometry: straight-line track (add ORS key for real roads)</div>
+      <div class="map-key">
+        <div class="key-title">MAP API KEY (optional)</div>
+        <p class="muted">OpenStreetMap works with <b>no key</b>. To use a keyed provider (e.g. MapTiler / Thunderforest / Mapbox raster), paste the key + tile URL below. Stored in <code>GUARDX_CONFIG.MAP_API_KEY</code> (<code>js/api.js</code>).</p>
+        <label>API KEY</label>
+        <input id="map-key" type="text" placeholder="pk. / key — leave empty for OSM" autocomplete="off" />
+        <label>TILE URL TEMPLATE</label>
+        <input id="map-tile" type="text" value="https://tile.openstreetmap.org/{z}/{x}/{y}.png" spellcheck="false" />
+        <div class="ip-row">
+          <button id="btn-apply-map" class="btn btn-ghost">APPLY MAP SOURCE</button>
+          <button id="btn-osm-reset" class="btn btn-ghost">RESET TO OSM</button>
+        </div>
+        <small>OSM default: <code>https://tile.openstreetmap.org/{z}/{x}/{y}.png</code> © OpenStreetMap contributors. Do not bulk-download tiles.</small>
+      </div>
+    </div>
+    <div class="panel map-panel">
+      <div class="panel-title">LIVE MAP <span class="tag" id="map-src-tag">OSM • NO KEY</span></div>
+      <div id="gps-map" aria-label="GUARD-X GPS map"></div>
+      <div class="map-foot"><span>© OpenStreetMap contributors</span><span id="map-coords">— , —</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="pager">
+  <a href="autonomous.html">← AUTO</a>
+  <a href="keys.html">KEYS →</a>
+</div>
+
+<footer class="footer">
+  <div><strong>GUARD-X</strong> • Autonomous Multi-Sensor Security Rover • ECE Project Demonstration</div>
+  <div class="muted">ESP32 serves / polls JSON • Dashboard: HTML/CSS/Vanilla JS • Map: Leaflet + © OpenStreetMap contributors</div>
+</footer>
+</main>
+
+<nav class="bottom-nav" aria-label="Pages">
+  <div class="bottom-nav-inner">
+    <a class="bnav-item" href="index.html"><span class="ico">🏠</span>HOME</a>
+    <a class="bnav-item" href="control.html"><span class="ico">🎮</span>CONTROL</a>
+    <a class="bnav-item" href="autonomous.html"><span class="ico">🧭</span>AUTO</a>
+    <a class="bnav-item active" href="gps.html"><span class="ico">🛰</span>GPS</a>
+    <a class="bnav-item" href="keys.html"><span class="ico">🔑</span>KEYS</a>
+    <a class="bnav-item" href="security.html"><span class="ico">🛡</span>SECURE</a>
+    <a class="bnav-item" href="system.html"><span class="ico">⚙</span>SYSTEM</a>
+    <a class="bnav-item" href="about.html"><span class="ico">ℹ</span>ABOUT</a>
+  </div>
+</nav>
+
+<div id="toast-wrap" aria-live="polite"></div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

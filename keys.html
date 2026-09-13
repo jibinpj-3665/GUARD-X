@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GUARD-X | API Keys &amp; AI</title>
+<meta name="description" content="GUARD-X optional API keys and Gemini live analysis." />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
+</head>
+<body data-page="keys">
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="40" height="40">
+          <rect x="6" y="14" width="36" height="20" rx="5" fill="none" stroke="#00e5ff" stroke-width="2.5"/>
+          <circle cx="14" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="34" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="24" cy="24" r="5" fill="none" stroke="#00ff88" stroke-width="2"/>
+          <circle cx="24" cy="24" r="1.8" fill="#00ff88"/>
+          <path d="M24 6v8M14 10l4 5M34 10l-4 5" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">GUARD<span>-X</span></div>
+        <div class="brand-sub">AUTONOMOUS SECURITY ROVER</div>
+      </div>
+    </div>
+    <nav class="topnav" aria-label="Pages">
+      <a href="index.html">Home</a>
+      <a href="control.html">Control</a>
+      <a href="autonomous.html">Auto</a>
+      <a href="gps.html">GPS</a>
+      <a href="keys.html" class="active">Keys/AI</a>
+      <a href="security.html">Security</a>
+      <a href="system.html">System</a>
+      <a href="about.html">About</a>
+    </nav>
+    <div class="topbar-status">
+      <div class="conn-pill offline" id="conn-pill" title="ESP32 connection state">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">🔴 OFFLINE</span>
+      </div>
+      <div class="mode-badge" id="mode-badge">MANUAL</div>
+      <label class="demo-switch" title="Simulate sensors when ESP32 is not reachable">
+        <input type="checkbox" id="demo-toggle" checked />
+        <span class="switch"></span>
+        <span class="demo-label">DEMO</span>
+      </label>
+      <button class="estop-mini js-estop" title="Emergency stop (SPACE)">⛔ STOP</button>
+    </div>
+  </div>
+  <div class="topbar-sub">
+    <div class="sub-item">ESP32 IP: <code id="header-ip">192.168.4.1</code></div>
+    <div class="sub-item">Wi-Fi: <span id="wifi-bars" class="wifi" aria-label="Wi-Fi signal">▂▄▆</span> <span id="wifi-text">--</span></div>
+    <div class="sub-item">MODE: <span id="header-mode">MANUAL</span></div>
+    <div class="sub-item demo-note hidden" id="demo-banner-top">DEMO MODE — SIMULATED DATA</div>
+  </div>
+</header>
+
+<main>
+<section id="integrations" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">05</span> API KEYS &amp; LIVE AI ANALYSIS</h2>
+    <p>Optional enhancements • keys stay in your browser only</p>
+  </div>
+  <div class="grid grid-2">
+    <div class="apikeys">
+      <div class="apikeys-title">API KEYS (OPTIONAL · BRING YOUR OWN)</div>
+
+      <div class="api-card">
+        <div class="api-head">
+          <span>🔑 <strong>OpenRouteService — real road geometry</strong></span>
+          <span class="api-conn" id="ors-status"><i></i>NOT SET</span>
+        </div>
+        <div class="api-input-row">
+          <input id="ors-key" type="password" placeholder="eyJvcmMiOiI1YjNjZTM1OTc4NExMT…" autocomplete="off" spellcheck="false" />
+          <button class="eye-btn" id="btn-toggle-ors" aria-label="Show/hide ORS key">🚫👁</button>
+        </div>
+        <a class="api-link" href="https://openrouteservice.org" target="_blank" rel="noopener">Get a free key → openrouteservice.org</a>
+      </div>
+
+      <div class="api-card">
+        <div class="api-head">
+          <span>🔑 <strong>Google Gemini — live AI analysis</strong></span>
+          <span class="api-conn" id="gemini-status"><i></i>NOT SET</span>
+        </div>
+        <div class="api-input-row">
+          <input id="gemini-key" type="password" placeholder="AIzaSy… — paste Gemini API key" autocomplete="off" spellcheck="false" />
+          <button class="eye-btn" id="btn-toggle-gemini" aria-label="Show/hide Gemini key">🚫👁</button>
+        </div>
+        <a class="api-link" href="https://aistudio.google.com" target="_blank" rel="noopener">Get a free key → aistudio.google.com</a>
+      </div>
+
+      <div class="api-actions">
+        <button id="btn-save-keys" class="save-keys">SAVE KEYS</button>
+        <button id="btn-clear-keys" class="btn btn-ghost">CLEAR</button>
+      </div>
+      <small class="muted">Keys are stored <b>only in this browser's localStorage</b> and sent only to their own provider (ORS → openrouteservice.org, Gemini → googleapis.com). OSM map + dashboard work with no keys.</small>
+    </div>
+
+    <div class="panel ai-panel">
+      <div class="panel-title">🤖 GEMINI — LIVE ROVER ANALYSIS <span class="badge warn" id="ai-status">NO KEY</span></div>
+      <p class="muted">Sends the latest telemetry snapshot (distances, temp/humidity, GPS, battery, mode) to Gemini for a short safety assessment. Nothing leaves the browser except to Google when you press Analyze.</p>
+      <div class="ai-btns">
+        <button id="btn-ai-analyze" class="btn btn-success">✨ ANALYZE WITH AI</button>
+        <button id="btn-ai-clear" class="btn btn-ghost">CLEAR</button>
+      </div>
+      <div class="ai-output" id="ai-output">Press ANALYZE WITH AI — needs a Gemini key above. Example output: patrol risk, sensor anomalies, next action.</div>
+    </div>
+  </div>
+</section>
+
+<div class="pager">
+  <a href="gps.html">← GPS</a>
+  <a href="security.html">SECURITY →</a>
+</div>
+
+<footer class="footer">
+  <div><strong>GUARD-X</strong> • Autonomous Multi-Sensor Security Rover • ECE Project Demonstration</div>
+  <div class="muted">ESP32 serves / polls JSON • Dashboard: HTML/CSS/Vanilla JS • Map: Leaflet + © OpenStreetMap contributors</div>
+</footer>
+</main>
+
+<nav class="bottom-nav" aria-label="Pages">
+  <div class="bottom-nav-inner">
+    <a class="bnav-item" href="index.html"><span class="ico">🏠</span>HOME</a>
+    <a class="bnav-item" href="control.html"><span class="ico">🎮</span>CONTROL</a>
+    <a class="bnav-item" href="autonomous.html"><span class="ico">🧭</span>AUTO</a>
+    <a class="bnav-item" href="gps.html"><span class="ico">🛰</span>GPS</a>
+    <a class="bnav-item active" href="keys.html"><span class="ico">🔑</span>KEYS</a>
+    <a class="bnav-item" href="security.html"><span class="ico">🛡</span>SECURE</a>
+    <a class="bnav-item" href="system.html"><span class="ico">⚙</span>SYSTEM</a>
+    <a class="bnav-item" href="about.html"><span class="ico">ℹ</span>ABOUT</a>
+  </div>
+</nav>
+
+<div id="toast-wrap" aria-live="polite"></div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

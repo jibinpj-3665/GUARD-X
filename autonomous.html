@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GUARD-X | Autonomous Patrol</title>
+<meta name="description" content="GUARD-X autonomous patrol, surroundings and rover visualization." />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
+</head>
+<body data-page="autonomous">
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="40" height="40">
+          <rect x="6" y="14" width="36" height="20" rx="5" fill="none" stroke="#00e5ff" stroke-width="2.5"/>
+          <circle cx="14" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="34" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="24" cy="24" r="5" fill="none" stroke="#00ff88" stroke-width="2"/>
+          <circle cx="24" cy="24" r="1.8" fill="#00ff88"/>
+          <path d="M24 6v8M14 10l4 5M34 10l-4 5" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">GUARD<span>-X</span></div>
+        <div class="brand-sub">AUTONOMOUS SECURITY ROVER</div>
+      </div>
+    </div>
+    <nav class="topnav" aria-label="Pages">
+      <a href="index.html">Home</a>
+      <a href="control.html">Control</a>
+      <a href="autonomous.html" class="active">Auto</a>
+      <a href="gps.html">GPS</a>
+      <a href="keys.html">Keys/AI</a>
+      <a href="security.html">Security</a>
+      <a href="system.html">System</a>
+      <a href="about.html">About</a>
+    </nav>
+    <div class="topbar-status">
+      <div class="conn-pill offline" id="conn-pill" title="ESP32 connection state">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">🔴 OFFLINE</span>
+      </div>
+      <div class="mode-badge" id="mode-badge">MANUAL</div>
+      <label class="demo-switch" title="Simulate sensors when ESP32 is not reachable">
+        <input type="checkbox" id="demo-toggle" checked />
+        <span class="switch"></span>
+        <span class="demo-label">DEMO</span>
+      </label>
+      <button class="estop-mini js-estop" title="Emergency stop (SPACE)">⛔ STOP</button>
+    </div>
+  </div>
+  <div class="topbar-sub">
+    <div class="sub-item">ESP32 IP: <code id="header-ip">192.168.4.1</code></div>
+    <div class="sub-item">Wi-Fi: <span id="wifi-bars" class="wifi" aria-label="Wi-Fi signal">▂▄▆</span> <span id="wifi-text">--</span></div>
+    <div class="sub-item">MODE: <span id="header-mode">MANUAL</span></div>
+    <div class="sub-item demo-note hidden" id="demo-banner-top">DEMO MODE — SIMULATED DATA</div>
+  </div>
+</header>
+
+<main>
+<section id="autonomous" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">03</span> AUTONOMOUS PATROL</h2>
+    <p>Onboard obstacle avoidance using 3× ultrasonic + servo sweep</p>
+  </div>
+  <div class="grid grid-3">
+    <div class="panel">
+      <div class="panel-title">AUTONOMOUS CONTROL</div>
+      <div class="auto-btns">
+        <button id="btn-auto-start" class="btn btn-success">▶ START PATROL</button>
+        <button id="btn-auto-stop" class="btn btn-ghost">■ STOP</button>
+      </div>
+      <div class="srow" style="margin-top:10px"><span>Mode</span><strong id="st-mode">MANUAL</strong></div>
+      <div class="decision-label">CURRENT DECISION</div>
+      <div class="decision" id="decision">PATH CLEAR</div>
+      <ul class="auto-logic">
+        <li><code>front &lt; 25cm</code> → stop → scan L/R → turn to clearer side</li>
+        <li><code>25–60cm</code> → caution, reduce speed</li>
+        <li><code>&gt; 60cm</code> → forward, path clear</li>
+        <li>vibration trip → <b>INTRUSION DETECTED</b>, buzzer ON</li>
+      </ul>
+    </div>
+
+    <div class="panel surround-panel">
+      <div class="panel-title">SURROUNDINGS</div>
+      <div class="surround">
+        <div class="sur-top"><span>FRONT</span><strong id="sur-front">-- cm</strong><i id="sur-front-dot" class="sdot"></i></div>
+        <div class="sur-mid">
+          <div class="sur-side"><span>LEFT</span><strong id="sur-left">-- cm</strong><i id="sur-left-dot" class="sdot"></i></div>
+          <div class="sur-rover">GUARD-X<br/>🤖</div>
+          <div class="sur-side"><span>RIGHT</span><strong id="sur-right">-- cm</strong><i id="sur-right-dot" class="sdot"></i></div>
+        </div>
+      </div>
+      <small class="muted">🟢 safe &gt;60 &nbsp; 🟡 caution 25–60 &nbsp; 🔴 obstacle &lt;25</small>
+      <div class="dist-grid" style="margin-top:10px">
+        <div class="dist" id="card-front">
+          <div class="dist-label">FRONT</div>
+          <div class="dist-val"><span id="front-val">--</span><small>cm</small></div>
+          <div class="dist-state" id="front-state">—</div>
+        </div>
+        <div class="dist" id="card-left">
+          <div class="dist-label">LEFT</div>
+          <div class="dist-val"><span id="left-val">--</span><small>cm</small></div>
+          <div class="dist-state" id="left-state">—</div>
+        </div>
+        <div class="dist" id="card-right">
+          <div class="dist-label">RIGHT</div>
+          <div class="dist-val"><span id="right-val">--</span><small>cm</small></div>
+          <div class="dist-state" id="right-state">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="visualization">
+      <div class="panel-title">LIVE ROVER VISUALIZATION <span class="tag">TOP-DOWN</span></div>
+      <div class="rover-stage">
+        <div class="fov fov-left" id="fov-left"></div>
+        <div class="fov fov-front" id="fov-front"></div>
+        <div class="fov fov-right" id="fov-right"></div>
+        <svg class="rover-svg" viewBox="0 0 220 300" role="img" aria-label="GUARD-X top-down diagram">
+          <rect class="wheel fl" x="18" y="60" width="26" height="58" rx="7"/>
+          <rect class="wheel fr" x="176" y="60" width="26" height="58" rx="7"/>
+          <rect class="wheel rl" x="18" y="185" width="26" height="58" rx="7"/>
+          <rect class="wheel rr" x="176" y="185" width="26" height="58" rx="7"/>
+          <rect x="48" y="45" width="124" height="212" rx="18" class="chassis"/>
+          <rect x="62" y="60" width="96" height="40" rx="8" class="deck"/>
+          <circle cx="110" cy="80" r="10" class="esp"/>
+          <text x="110" y="84" text-anchor="middle" class="svg-txt">ESP32</text>
+          <rect x="70" y="118" width="80" height="44" rx="6" class="deck"/>
+          <circle cx="92" cy="140" r="7" class="gpsdot"/>
+          <text x="122" y="137" class="svg-txt small">GPS</text>
+          <text x="122" y="149" class="svg-txt small dim">NEO-6M</text>
+          <circle cx="80" cy="52" r="7" class="us"/>
+          <circle cx="110" cy="46" r="7" class="us"/>
+          <circle cx="140" cy="52" r="7" class="us"/>
+          <rect x="86" y="180" width="48" height="30" rx="6" class="deck"/>
+          <text x="110" y="199" text-anchor="middle" class="svg-txt small">L298N</text>
+          <circle cx="110" cy="232" r="8" class="oled-dot"/>
+          <g id="dir-arrow" class="dir-stop">
+            <polygon points="110,112 98,132 104,132 104,148 116,148 116,132 122,132" />
+          </g>
+        </svg>
+        <div class="rover-dir">HEADING: <strong id="rover-dir">STOP</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="pager">
+  <a href="control.html">← CONTROL</a>
+  <a href="gps.html">GPS →</a>
+</div>
+
+<footer class="footer">
+  <div><strong>GUARD-X</strong> • Autonomous Multi-Sensor Security Rover • ECE Project Demonstration</div>
+  <div class="muted">ESP32 serves / polls JSON • Dashboard: HTML/CSS/Vanilla JS • Map: Leaflet + © OpenStreetMap contributors</div>
+</footer>
+</main>
+
+<nav class="bottom-nav" aria-label="Pages">
+  <div class="bottom-nav-inner">
+    <a class="bnav-item" href="index.html"><span class="ico">🏠</span>HOME</a>
+    <a class="bnav-item" href="control.html"><span class="ico">🎮</span>CONTROL</a>
+    <a class="bnav-item active" href="autonomous.html"><span class="ico">🧭</span>AUTO</a>
+    <a class="bnav-item" href="gps.html"><span class="ico">🛰</span>GPS</a>
+    <a class="bnav-item" href="keys.html"><span class="ico">🔑</span>KEYS</a>
+    <a class="bnav-item" href="security.html"><span class="ico">🛡</span>SECURE</a>
+    <a class="bnav-item" href="system.html"><span class="ico">⚙</span>SYSTEM</a>
+    <a class="bnav-item" href="about.html"><span class="ico">ℹ</span>ABOUT</a>
+  </div>
+</nav>
+
+<div id="toast-wrap" aria-live="polite"></div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

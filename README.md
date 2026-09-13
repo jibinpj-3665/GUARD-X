@@ -33,13 +33,24 @@ python -m http.server 8000
 ## File structure
 
 ```
-index.html        dashboard markup (all sections)
-css/style.css     dark cyber-industrial theme, responsive
+index.html        home: status, sensors, motion + ESP32 connect
+control.html      manual drive, speed, safety
+autonomous.html   auto patrol, surroundings, rover visualization
+gps.html          GPS map (Leaflet), road route, tile key
+keys.html         optional ORS + Gemini keys, AI analysis
+security.html     intrusion panel, event log, OLED mirror
+system.html       architecture diagram
+about.html        mission, applications, hardware manifest
+css/style.css     dark cyber-industrial theme, responsive + mobile bottom nav
 js/api.js         ESP32 + map/key config, command + sensor + ORS + Gemini APIs
 js/dashboard.js   UI rendering, demo simulator, Leaflet map
-js/app.js         wiring, keyboard, polling loop
+js/app.js         wiring, keyboard, polling loop (multi-page safe)
 assets/           static assets
 ```
+
+Each page is standalone for easy phone use: a fixed bottom nav (mobile)
+plus prev/next pager links connect all 8 pages. Live demo:
+https://jibinpj-3665.github.io/GUARD-X/
 
 ## ESP32 HTTP API
 

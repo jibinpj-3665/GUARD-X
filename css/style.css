@@ -281,6 +281,20 @@ body.alarm .security-panel{border-color:var(--red);box-shadow:0 0 30px rgba(255,
 .ai-output{background:#0a1322;border:1px solid var(--line2);border-radius:12px;padding:12px;font-family:var(--mono);font-size:.78rem;line-height:1.65;white-space:pre-wrap;min-height:130px;max-height:300px;overflow-y:auto;color:var(--txt)}
 .ai-output.loading{border-color:var(--cyan);color:var(--cyan)}
 
+/* ---------- mobile bottom nav + header estop ---------- */
+.estop-mini{border:2px solid var(--red);background:linear-gradient(180deg,#5a0f1f,#2a060e);color:#fff;border-radius:10px;font-weight:900;font-size:.72rem;letter-spacing:1px;padding:8px 10px;cursor:pointer;white-space:nowrap}
+.estop-mini:active{transform:scale(.96)}
+.bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(5,8,15,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));overflow-x:auto;scrollbar-width:none}
+.bottom-nav::-webkit-scrollbar{display:none}
+.bottom-nav-inner{display:flex;gap:2px;min-width:max-content;margin:0 auto;width:max-content;max-width:100%}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;padding:7px 8px;border-radius:10px;color:var(--muted);text-decoration:none;font-size:.62rem;font-family:var(--mono);letter-spacing:.5px}
+.bnav-item .ico{font-size:1.25rem;line-height:1}
+.bnav-item.active{color:var(--cyan);background:rgba(0,229,255,.12)}
+.topnav a.active{color:var(--cyan)}
+.pager{display:flex;gap:10px;margin:20px 0 6px}
+.pager a{flex:1;text-align:center;border:1px solid var(--line);border-radius:12px;padding:13px;color:var(--cyan);text-decoration:none;font-weight:700;font-size:.82rem;letter-spacing:1px;background:#0d1830}
+.pager a:active{transform:scale(.98)}
+
 /* responsive */
 @media(max-width:1020px){
   .grid-3{grid-template-columns:1fr 1fr}
@@ -293,5 +307,11 @@ body.alarm .security-panel{border-color:var(--red);box-shadow:0 0 30px rgba(255,
   .env-grid{grid-template-columns:1fr 1fr}
   .hw-grid{grid-template-columns:1fr}
   #gps-map{height:300px}
-  main{padding:12px}
+  main{padding:12px;padding-bottom:86px}
+  .footer{padding-bottom:86px}
+  .bottom-nav{display:block}
+  .brand-sub{display:none}
+  .brand-name{font-size:1.15rem}
+  .topbar-inner{gap:10px}
+  .demo-label{display:none}
 }

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GUARD-X | About &amp; Hardware</title>
+<meta name="description" content="About GUARD-X and its hardware manifest." />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
+</head>
+<body data-page="about">
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="40" height="40">
+          <rect x="6" y="14" width="36" height="20" rx="5" fill="none" stroke="#00e5ff" stroke-width="2.5"/>
+          <circle cx="14" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="34" cy="38" r="4" fill="#0a1626" stroke="#00e5ff" stroke-width="2"/>
+          <circle cx="24" cy="24" r="5" fill="none" stroke="#00ff88" stroke-width="2"/>
+          <circle cx="24" cy="24" r="1.8" fill="#00ff88"/>
+          <path d="M24 6v8M14 10l4 5M34 10l-4 5" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">GUARD<span>-X</span></div>
+        <div class="brand-sub">AUTONOMOUS SECURITY ROVER</div>
+      </div>
+    </div>
+    <nav class="topnav" aria-label="Pages">
+      <a href="index.html">Home</a>
+      <a href="control.html">Control</a>
+      <a href="autonomous.html">Auto</a>
+      <a href="gps.html">GPS</a>
+      <a href="keys.html">Keys/AI</a>
+      <a href="security.html">Security</a>
+      <a href="system.html">System</a>
+      <a href="about.html" class="active">About</a>
+    </nav>
+    <div class="topbar-status">
+      <div class="conn-pill offline" id="conn-pill" title="ESP32 connection state">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">🔴 OFFLINE</span>
+      </div>
+      <div class="mode-badge" id="mode-badge">MANUAL</div>
+      <label class="demo-switch" title="Simulate sensors when ESP32 is not reachable">
+        <input type="checkbox" id="demo-toggle" checked />
+        <span class="switch"></span>
+        <span class="demo-label">DEMO</span>
+      </label>
+      <button class="estop-mini js-estop" title="Emergency stop (SPACE)">⛔ STOP</button>
+    </div>
+  </div>
+  <div class="topbar-sub">
+    <div class="sub-item">ESP32 IP: <code id="header-ip">192.168.4.1</code></div>
+    <div class="sub-item">Wi-Fi: <span id="wifi-bars" class="wifi" aria-label="Wi-Fi signal">▂▄▆</span> <span id="wifi-text">--</span></div>
+    <div class="sub-item">MODE: <span id="header-mode">MANUAL</span></div>
+    <div class="sub-item demo-note hidden" id="demo-banner-top">DEMO MODE — SIMULATED DATA</div>
+  </div>
+</header>
+
+<main>
+<section id="about" class="section">
+  <div class="section-head">
+    <h2><span class="h-num">08</span> ABOUT GUARD-X</h2>
+  </div>
+  <div class="grid grid-2">
+    <div class="panel">
+      <div class="panel-title">MISSION</div>
+      <p><strong>GUARD-X is an ESP32-based autonomous multi-sensor security rover designed for mobile environmental and security monitoring.</strong></p>
+      <div class="feat-grid">
+        <div>📡 Wireless control</div><div>🧭 Autonomous avoidance</div>
+        <div>🎛 Multi-sensor monitor</div><div>🛰 GPS awareness</div>
+        <div>🌡 Environment sensing</div><div>🚨 Vibration intrusion detect</div>
+        <div>🖥 Real-time dashboard</div><div>📟 OLED status display</div>
+        <div>🚗 4WD mobility</div>
+      </div>
+      <div class="panel-title" style="margin-top:18px">APPLICATIONS</div>
+      <div class="app-tags"><span>Homes &amp; compounds</span><span>Warehouses</span><span>Laboratories</span><span>Campuses</span><span>Farms</span><span>Construction sites</span><span>Restricted areas</span><span>Search &amp; monitoring</span></div>
+    </div>
+    <div class="panel" id="hardware">
+      <div class="panel-title">HARDWARE MANIFEST</div>
+      <div class="hw-grid" id="hw-grid"><!-- rendered by app.js --></div>
+    </div>
+  </div>
+</section>
+
+<div class="pager">
+  <a href="system.html">← SYSTEM</a>
+  <a href="index.html">HOME →</a>
+</div>
+
+<footer class="footer">
+  <div><strong>GUARD-X</strong> • Autonomous Multi-Sensor Security Rover • ECE Project Demonstration</div>
+  <div class="muted">ESP32 serves / polls JSON • Dashboard: HTML/CSS/Vanilla JS • Map: Leaflet + © OpenStreetMap contributors</div>
+</footer>
+</main>
+
+<nav class="bottom-nav" aria-label="Pages">
+  <div class="bottom-nav-inner">
+    <a class="bnav-item" href="index.html"><span class="ico">🏠</span>HOME</a>
+    <a class="bnav-item" href="control.html"><span class="ico">🎮</span>CONTROL</a>
+    <a class="bnav-item" href="autonomous.html"><span class="ico">🧭</span>AUTO</a>
+    <a class="bnav-item" href="gps.html"><span class="ico">🛰</span>GPS</a>
+    <a class="bnav-item" href="keys.html"><span class="ico">🔑</span>KEYS</a>
+    <a class="bnav-item" href="security.html"><span class="ico">🛡</span>SECURE</a>
+    <a class="bnav-item" href="system.html"><span class="ico">⚙</span>SYSTEM</a>
+    <a class="bnav-item active" href="about.html"><span class="ico">ℹ</span>ABOUT</a>
+  </div>
+</nav>
+
+<div id="toast-wrap" aria-live="polite"></div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

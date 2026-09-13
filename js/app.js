@@ -1,8 +1,18 @@
 /* ============================================================
    GUARD-X APP WIRING (js/app.js) — init, inputs, polling loop
+   Multi-page safe: every binding tolerates missing elements,
+   so each HTML page only includes the panels it needs.
    ============================================================ */
 (function () {
   "use strict";
+
+  // Bind only if the element exists on this page. Returns element or null.
+  function on(id, ev, fn) {
+    const e = document.getElementById(id);
+    if (e) e.addEventListener(ev, fn);
+    return e;
+  }
+  function get(id) { return document.getElementById(id); }
 
   const HARDWARE = [
     ["ESP32 DevKit", "Wi-Fi MCU • web server • sensor hub", "CORE"],
@@ -21,7 +31,7 @@
   ];
 
   function renderHardware() {
-    const g = document.getElementById("hw-grid");
+    const g = get("hw-grid");
     if (!g) return;
     g.innerHTML = "";
     HARDWARE.forEach(([name, purpose, st]) => {
@@ -46,7 +56,7 @@
       updateConnectionUI();
     } catch (e) {
       updateConnectionUI();
-      const lp = document.getElementById("last-poll");
+      const lp = get("last-poll");
       if (lp) lp.textContent = "last poll failed: " + e.message;
     } finally {
       polling = false;
@@ -82,102 +92,112 @@
       const tag = (document.activeElement && document.activeElement.tagName) || "";
       if (tag === "INPUT" || tag === "TEXTAREA") return; // don't hijack typing
       if (e.code === "Space") { e.preventDefault(); emergencyStop(); return; }
-      const k = e.key.toLowerCase();
+      const k = (e.key || "").toLowerCase();
       if (keymap[k] && !e.repeat) sendCommand(keymap[k]);
     });
   }
 
   function bindUI() {
-    const demo = document.getElementById("demo-toggle");
-    demo.addEventListener("change", () => {
+    const demo = on("demo-toggle", "change", () => {
       GuardXState.demoMode = demo.checked;
       if (demo.checked) resetDemo();
       addLog(demo.checked ? "DEMO MODE ENABLED — simulated data" : "DEMO MODE OFF — live ESP32 only", demo.checked ? "warn" : "ok");
       updateConnectionUI();
       pollOnce();
     });
-    GuardXState.demoMode = demo.checked;
+    if (demo) GuardXState.demoMode = demo.checked;
 
-    document.getElementById("btn-connect").addEventListener("click", async () => {
+    on("btn-connect", "click", async () => {
       addLog("Probing ESP32 @ " + getBaseUrl() + " …");
       const ok = await probeConnection();
       addLog(ok ? "ESP32 CONNECTED — live telemetry" : "ESP32 UNREACHABLE — check IP / AP join", ok ? "ok" : "alarm");
       toast(ok ? "ESP32 online" : "ESP32 offline — demo continues", ok ? "ok" : "err");
       pollOnce();
     });
-    document.getElementById("btn-disconnect").addEventListener("click", () => {
+    on("btn-disconnect", "click", () => {
       setOnline(false);
       addLog("Link closed by operator", "warn");
     });
-    document.getElementById("btn-poll-now").addEventListener("click", pollOnce);
-    document.getElementById("esp-ip").addEventListener("change", updateConnectionUI);
+    on("btn-poll-now", "click", pollOnce);
+    on("esp-ip", "change", updateConnectionUI);
 
-    document.getElementById("mode-manual").addEventListener("click", () => setMode("manual"));
-    document.getElementById("mode-auto").addEventListener("click", () => setMode("auto"));
+    on("mode-manual", "click", () => setMode("manual"));
+    on("mode-auto", "click", () => setMode("auto"));
 
-    const slider = document.getElementById("speed-slider");
-    const paintSpeed = () => {
-      document.getElementById("speed-pct").textContent = Math.round((slider.value / 255) * 100) + "%";
-      document.getElementById("speed-num").textContent = slider.value;
-    };
-    slider.addEventListener("input", paintSpeed);
-    slider.addEventListener("change", () => setSpeed(slider.value));
-    document.getElementById("btn-speed-apply").addEventListener("click", () => {
-      setSpeed(slider.value);
-      addLog("Speed → " + slider.value + "/255");
+    const slider = get("speed-slider");
+    if (slider) {
+      const paintSpeed = () => {
+        const pct = Math.round((slider.value / 255) * 100) + "%";
+        const p1 = get("speed-pct"), p2 = get("speed-num");
+        if (p1) p1.textContent = pct;
+        if (p2) p2.textContent = slider.value;
+      };
+      slider.addEventListener("input", paintSpeed);
+      slider.addEventListener("change", () => setSpeed(slider.value));
+      paintSpeed();
+    }
+    on("btn-speed-apply", "click", () => {
+      const v = get("speed-slider");
+      if (!v) return;
+      setSpeed(v.value);
+      addLog("Speed → " + v.value + "/255");
     });
-    paintSpeed();
 
     const estop = (e) => { if (e) e.preventDefault(); emergencyStop(); };
-    document.getElementById("btn-emergency").addEventListener("click", estop);
-    document.getElementById("btn-emergency-top").addEventListener("click", estop);
+    on("btn-emergency", "click", estop);
+    on("btn-emergency-top", "click", estop);
+    document.querySelectorAll(".js-estop").forEach((b) => b.addEventListener("click", estop));
 
-    document.getElementById("btn-auto-start").addEventListener("click", async () => {
+    on("btn-auto-start", "click", async () => {
       addLog("Autonomous patrol requested");
       await startAutonomous();
     });
-    document.getElementById("btn-auto-stop").addEventListener("click", async () => {
+    on("btn-auto-stop", "click", async () => {
       addLog("Autonomous patrol stopped by operator", "warn");
       await stopAutonomous();
       await sendCommand("stop");
     });
 
-    document.getElementById("btn-ack").addEventListener("click", () => {
+    on("btn-ack", "click", () => {
       GuardXState.acknowledged = true;
       document.body.classList.remove("alarm");
       addLog("Alert acknowledged by operator", "ok");
       toast("Alert acknowledged", "ok");
     });
-    document.getElementById("btn-clear-log").addEventListener("click", () => {
-      document.getElementById("event-log").innerHTML = "";
+    on("btn-clear-log", "click", () => {
+      const ul = get("event-log");
+      if (ul) ul.innerHTML = "";
       addLog("Log cleared");
     });
 
     // map controls
-    document.getElementById("btn-center").addEventListener("click", () => {
-      if (map && roverMarker) { map.setView(roverMarker.getLatLng(), 17); }
+    on("btn-center", "click", () => {
+      if (typeof map !== "undefined" && map && typeof roverMarker !== "undefined" && roverMarker) {
+        map.setView(roverMarker.getLatLng(), 17);
+      }
     });
-    document.getElementById("btn-clear-route").addEventListener("click", () => {
+    on("btn-clear-route", "click", () => {
       GuardXState.route = [];
-      if (routeLine) routeLine.setLatLngs([]);
+      if (typeof routeLine !== "undefined" && routeLine) routeLine.setLatLngs([]);
       if (typeof clearRoadGeometry === "function") clearRoadGeometry();
-      document.getElementById("gps-points").textContent = "0";
+      const gp = get("gps-points");
+      if (gp) gp.textContent = "0";
       addLog("Route cleared");
     });
-    document.getElementById("follow-toggle").addEventListener("change", (e) => {
+    on("follow-toggle", "change", (e) => {
       GuardXState.followMap = e.target.checked;
     });
-    document.getElementById("btn-apply-map").addEventListener("click", refreshMapSource);
-    document.getElementById("btn-osm-reset").addEventListener("click", () => {
-      document.getElementById("map-key").value = "";
-      document.getElementById("map-tile").value = GUARDX_CONFIG.MAP_TILE_URL_DEFAULT;
+    on("btn-apply-map", "click", refreshMapSource);
+    on("btn-osm-reset", "click", () => {
+      const k = get("map-key"), t = get("map-tile");
+      if (k) k.value = "";
+      if (t) t.value = GUARDX_CONFIG.MAP_TILE_URL_DEFAULT;
       refreshMapSource();
     });
 
     // ---- API keys (bring your own) ----
     const togglePw = (inputId, btnId) => {
-      const inp = document.getElementById(inputId);
-      const btn = document.getElementById(btnId);
+      const inp = get(inputId), btn = get(btnId);
       if (!inp || !btn) return;
       btn.addEventListener("click", () => {
         const show = inp.type === "password";
@@ -187,25 +207,23 @@
     };
     togglePw("ors-key", "btn-toggle-ors");
     togglePw("gemini-key", "btn-toggle-gemini");
-    ["ors-key", "gemini-key"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener("input", () => renderApiKeyStatus());
-    });
-    document.getElementById("btn-save-keys").addEventListener("click", () => {
+    ["ors-key", "gemini-key"].forEach((id) => on(id, "input", () => renderApiKeyStatus()));
+    on("btn-save-keys", "click", () => {
       const s = saveApiKeys();
       addLog("API keys saved — ORS: " + (s.ors ? "set" : "empty") + ", Gemini: " + (s.gemini ? "set" : "empty"), "ok");
       toast("Keys saved locally", "ok");
     });
-    document.getElementById("btn-clear-keys").addEventListener("click", () => {
-      document.getElementById("ors-key").value = "";
-      document.getElementById("gemini-key").value = "";
+    on("btn-clear-keys", "click", () => {
+      const o = get("ors-key"), g = get("gemini-key");
+      if (o) o.value = "";
+      if (g) g.value = "";
       saveApiKeys();
       addLog("API keys cleared from this browser", "warn");
     });
 
     // ---- ORS road geometry ----
-    document.getElementById("btn-road-route").addEventListener("click", async () => {
-      const st = document.getElementById("ors-road-status");
+    on("btn-road-route", "click", async () => {
+      const st = get("ors-road-status");
       try {
         if (GuardXState.route.length < 2) { toast("Need 2+ GPS points first", "err"); return; }
         if (st) st.textContent = "Road geometry: requesting ORS…";
@@ -220,9 +238,8 @@
     });
 
     // ---- Gemini AI analysis ----
-    document.getElementById("btn-ai-analyze").addEventListener("click", async () => {
-      const out = document.getElementById("ai-output");
-      const badge = document.getElementById("ai-status");
+    on("btn-ai-analyze", "click", async () => {
+      const badge = get("ai-status");
       try {
         setAiOutput("Analyzing latest telemetry with Gemini…", true);
         if (badge) { badge.textContent = "THINKING"; badge.className = "badge warn"; }
@@ -236,7 +253,7 @@
         addLog("Gemini failed — " + e.message, "alarm");
       }
     });
-    document.getElementById("btn-ai-clear").addEventListener("click", () => {
+    on("btn-ai-clear", "click", () => {
       setAiOutput("Press ANALYZE WITH AI — needs a Gemini key above.", false);
     });
   }
@@ -248,19 +265,21 @@
     bindUI();
     bindDrive();
     bindKeyboard();
-    initMap();
+    if (get("gps-map")) initMap();
     loadApiKeys();
     updateConnectionUI();
-    renderMode("MANUAL");
+    renderMode(GuardXState.mode || "MANUAL");
 
-    addLog("SYSTEM INITIALIZED", "ok");
-    addLog("Dashboard ready — " + (GuardXState.demoMode ? "DEMO MODE (simulated data)" : "live mode"), "warn");
-    addLog("GPS SEARCHING … (awaiting fix)");
-    addLog("Tip: set ESP32 IP, press CONNECT for live data");
+    const hasLog = !!get("event-log");
+    if (hasLog) {
+      addLog("SYSTEM INITIALIZED", "ok");
+      addLog("Dashboard ready — " + (GuardXState.demoMode ? "DEMO MODE (simulated data)" : "live mode"), "warn");
+    }
 
     pollOnce();
     setInterval(pollOnce, GUARDX_CONFIG.POLL_INTERVAL_MS);
-    document.getElementById("poll-label").textContent = (GUARDX_CONFIG.POLL_INTERVAL_MS / 1000).toFixed(1);
+    const pl = get("poll-label");
+    if (pl) pl.textContent = (GUARDX_CONFIG.POLL_INTERVAL_MS / 1000).toFixed(1);
   }
 
   document.addEventListener("DOMContentLoaded", init);
