@@ -33,14 +33,17 @@
       </div>
     </div>
     <nav class="topnav" aria-label="Pages">
-      <a href="index.html">Home</a>
-      <a href="control.html">Control</a>
-      <a href="autonomous.html">Auto</a>
-      <a href="gps.html" class="active">GPS</a>
-      <a href="keys.html">Keys/AI</a>
-      <a href="security.html">Security</a>
-      <a href="system.html">System</a>
-      <a href="about.html">About</a>
+      <button class="navdrop-btn" id="navdrop-btn" aria-haspopup="true" aria-expanded="false">☰ PAGES ▾</button>
+      <div class="navdrop-menu" id="navdrop-menu">
+        <a href="index.html">🏠 Home</a>
+        <a href="control.html">🎮 Control</a>
+        <a href="autonomous.html">🧭 Auto</a>
+        <a href="gps.html" class="active">🛰 GPS</a>
+        <a href="keys.html">🔑 Keys/AI</a>
+        <a href="security.html">🛡 Security</a>
+        <a href="system.html">⚙ System</a>
+        <a href="about.html">ℹ About</a>
+      </div>
     </nav>
     <div class="topbar-status">
       <div class="conn-pill offline" id="conn-pill" title="ESP32 connection state">
@@ -87,8 +90,8 @@
         <label class="follow"><input type="checkbox" id="follow-toggle" checked /> auto-follow</label>
       </div>
       <div class="road-status muted" id="ors-road-status">Road geometry: straight-line track (add ORS key for real roads)</div>
-      <div class="fence-box">
-        <div class="key-title">⛔ RESTRICTED AREA <span id="fence-status" class="badge warn">NOT SET</span></div>
+      <div class="fence-box" id="fence">
+        <div class="key-title">⛔ RESTRICTED AREA — MARK NO-GO ZONE <span id="fence-status" class="badge warn">NOT SET</span></div>
         <p class="muted">Tap <b>MARK AREA</b>, then tap the map to drop boundary points (<b>FINISH</b> closes the zone). An alarm fires if GUARD-X enters it. The cyan trail + distance below track rover movement across pages.</p>
         <div class="gps-btns">
           <button id="btn-fence-mark" class="btn btn-danger">⛔ MARK AREA</button>

@@ -277,7 +277,8 @@ body.alarm .security-panel{border-color:var(--red);box-shadow:0 0 30px rgba(255,
 .save-keys{flex:1;border:0;cursor:pointer;border-radius:12px;padding:14px;font-weight:900;letter-spacing:1.5px;font-size:.9rem;color:#04211b;background:linear-gradient(90deg,#34d399,#14b8a6);box-shadow:0 6px 22px rgba(20,184,166,.35)}
 .save-keys:hover{filter:brightness(1.08)}
 .road-status{margin-top:10px;font-family:var(--mono);font-size:.72rem}
-.fence-box{margin-top:14px;border-top:1px dashed var(--line2);padding-top:12px}
+.fence-box{margin-top:14px;border:1px solid rgba(255,45,85,.5);border-radius:14px;padding:14px;background:rgba(255,45,85,.06);box-shadow:0 0 18px rgba(255,45,85,.12)}
+.fence-box .key-title{color:#ffb3c1;font-size:.8rem}
 .fence-box .gps-btns{margin-top:8px}
 .fence-box .srow{font-size:.82rem}
 #gps-map.marking{cursor:crosshair}
@@ -296,6 +297,18 @@ body.alarm .security-panel{border-color:var(--red);box-shadow:0 0 30px rgba(255,
 .bnav-item .ico{font-size:1.25rem;line-height:1}
 .bnav-item.active{color:var(--cyan);background:rgba(0,229,255,.12)}
 .topnav a.active{color:var(--cyan)}
+/* desktop PAGES dropdown */
+.navdrop-btn{display:none;align-items:center;gap:8px;background:#0d1830;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:9px 14px;font-weight:800;letter-spacing:2px;font-size:.78rem;cursor:pointer}
+.navdrop-btn:hover{border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.25)}
+@media(min-width:1021px){
+  .topnav{position:relative}
+  .navdrop-btn{display:inline-flex}
+  .navdrop-menu{display:none;position:absolute;top:calc(100% + 10px);right:0;flex-direction:column;gap:2px;min-width:230px;background:rgba(8,13,24,.97);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 16px 40px rgba(0,0,0,.55);z-index:70}
+  .topnav.open .navdrop-menu,.topnav:hover .navdrop-menu,.topnav:focus-within .navdrop-menu{display:flex}
+  .navdrop-menu a{padding:10px 12px;border-radius:9px;font-size:.82rem}
+  .navdrop-menu a:hover{background:rgba(0,229,255,.12)}
+  .navdrop-menu a.active{background:rgba(0,229,255,.15)}
+}
 .pager{display:flex;gap:10px;margin:20px 0 6px}
 .pager a{flex:1;text-align:center;border:1px solid var(--line);border-radius:12px;padding:13px;color:var(--cyan);text-decoration:none;font-weight:700;font-size:.82rem;letter-spacing:1px;background:#0d1830}
 .pager a:active{transform:scale(.98)}

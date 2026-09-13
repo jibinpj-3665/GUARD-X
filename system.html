@@ -31,14 +31,17 @@
       </div>
     </div>
     <nav class="topnav" aria-label="Pages">
-      <a href="index.html">Home</a>
-      <a href="control.html">Control</a>
-      <a href="autonomous.html">Auto</a>
-      <a href="gps.html">GPS</a>
-      <a href="keys.html">Keys/AI</a>
-      <a href="security.html">Security</a>
-      <a href="system.html" class="active">System</a>
-      <a href="about.html">About</a>
+      <button class="navdrop-btn" id="navdrop-btn" aria-haspopup="true" aria-expanded="false">☰ PAGES ▾</button>
+      <div class="navdrop-menu" id="navdrop-menu">
+        <a href="index.html">🏠 Home</a>
+        <a href="control.html">🎮 Control</a>
+        <a href="autonomous.html">🧭 Auto</a>
+        <a href="gps.html">🛰 GPS</a>
+        <a href="keys.html">🔑 Keys/AI</a>
+        <a href="security.html">🛡 Security</a>
+        <a href="system.html" class="active">⚙ System</a>
+        <a href="about.html">ℹ About</a>
+      </div>
     </nav>
     <div class="topbar-status">
       <div class="conn-pill offline" id="conn-pill" title="ESP32 connection state">

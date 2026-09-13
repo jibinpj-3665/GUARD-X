@@ -98,6 +98,29 @@
   }
 
   function bindUI() {
+    // desktop PAGES dropdown (CSS also opens on hover/focus; this handles click + outside close)
+    const dropBtn = get("navdrop-btn");
+    const topnav = document.querySelector(".topnav");
+    if (dropBtn && topnav) {
+      dropBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const open = topnav.classList.toggle("open");
+        dropBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      document.addEventListener("click", (e) => {
+        if (!topnav.contains(e.target)) {
+          topnav.classList.remove("open");
+          dropBtn.setAttribute("aria-expanded", "false");
+        }
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          topnav.classList.remove("open");
+          dropBtn.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
+
     const demo = on("demo-toggle", "change", () => {
       GuardXState.demoMode = demo.checked;
       if (demo.checked) resetDemo();

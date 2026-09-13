@@ -31,14 +31,17 @@
       </div>
     </div>
     <nav class="topnav" aria-label="Pages">
-      <a href="index.html">Home</a>
-      <a href="control.html">Control</a>
-      <a href="autonomous.html">Auto</a>
-      <a href="gps.html">GPS</a>
-      <a href="keys.html">Keys/AI</a>
-      <a href="security.html" class="active">Security</a>
-      <a href="system.html">System</a>
-      <a href="about.html">About</a>
+      <button class="navdrop-btn" id="navdrop-btn" aria-haspopup="true" aria-expanded="false">☰ PAGES ▾</button>
+      <div class="navdrop-menu" id="navdrop-menu">
+        <a href="index.html">🏠 Home</a>
+        <a href="control.html">🎮 Control</a>
+        <a href="autonomous.html">🧭 Auto</a>
+        <a href="gps.html">🛰 GPS</a>
+        <a href="keys.html">🔑 Keys/AI</a>
+        <a href="security.html" class="active">🛡 Security</a>
+        <a href="system.html">⚙ System</a>
+        <a href="about.html">ℹ About</a>
+      </div>
     </nav>
     <div class="topbar-status">
       <div class="conn-pill offline" id="conn-pill" title="ESP32 connection state">
@@ -77,6 +80,7 @@
       <div class="srow"><span>Alert state</span><strong id="sec-alert">NONE</strong></div>
       <div class="alert-msg hidden" id="alert-msg">🔴 INTRUSION DETECTED — vibration threshold exceeded. Rover halted, buzzer ON.</div>
       <button id="btn-ack" class="btn btn-primary btn-block" disabled>ACKNOWLEDGE ALERT</button>
+      <a class="api-link" href="gps.html#fence" style="display:inline-block;margin-top:10px">⛔ Mark a restricted no-go area on the GPS page →</a>
     </div>
 
     <div class="panel log-panel">
